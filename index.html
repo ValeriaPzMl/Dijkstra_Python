@@ -8,18 +8,26 @@
   <style>
     :root {
       color-scheme: light;
+      /* Swiss system: hard contrast, measured spacing, one catalytic accent. */
       --paper: #f4f4f0;
       --surface: #ffffff;
-      --ink: #171717;
-      --muted: #70706b;
-      --line: #d9d9d2;
-      --line-strong: #999991;
-      --accent: #e33c2f;
-      --accent-dark: #bb281f;
+      --ink: #111111;
+      --muted: #6f6f69;
+      --line: #d6d6cf;
+      --line-strong: #9a9a92;
+      --accent: #e3342b;
+      --accent-dark: #b92019;
       --green: #267454;
-      --shadow: 0 8px 26px rgb(20 20 20 / 8%);
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 24px;
+      --target-minimum: 48px;
+      --shadow: 0 12px 30px rgb(17 17 17 / 12%);
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
       --sans: Inter, Helvetica, Arial, sans-serif;
+      --transition-fast: 140ms ease;
     }
 
     * { box-sizing: border-box; }
@@ -33,18 +41,23 @@
     }
     button, input, select { font: inherit; }
     button { cursor: pointer; }
-    button:focus-visible, input:focus-visible, select:focus-visible {
-      outline: 3px solid rgb(227 60 47 / 28%);
-      outline-offset: 2px;
-    }
+    button:focus-visible, input:focus-visible, select:focus-visible,
+    .graph-node:focus-visible { outline: 3px solid rgb(227 52 43 / 35%); outline-offset: 3px; }
+    button:disabled { opacity: .48; cursor: not-allowed; }
 
-    .app-shell { height: 100dvh; min-height: 560px; display: grid; grid-template-rows: minmax(245px, 32%) minmax(0, 1fr); }
+    .app-shell {
+      width: 100%; min-width: 0;
+      height: 100dvh;
+      min-height: 650px;
+      display: grid;
+      grid-template-rows: minmax(330px, 38%) minmax(0, 1fr);
+    }
     .editor-panel {
-      min-height: 0;
+      min-width: 0; width: 100%; min-height: 0;
       display: flex;
       flex-direction: column;
-      padding: 18px 24px 14px;
-      border-bottom: 1px solid var(--ink);
+      padding: 16px 24px 12px;
+      border-bottom: 2px solid var(--ink);
       background: var(--paper);
       z-index: 2;
     }
@@ -53,125 +66,157 @@
       align-items: center;
       justify-content: space-between;
       gap: 18px;
-      min-height: 44px;
-      margin-bottom: 13px;
+      min-height: 42px;
+      margin-bottom: 12px;
     }
     .brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
     .brand-mark {
-      width: 34px; height: 34px; flex: 0 0 auto;
+      width: 38px; height: 38px; flex: 0 0 auto;
       display: grid; place-items: center;
-      color: #fff; background: var(--accent); font: 800 17px/1 var(--mono);
+      color: #fff; background: var(--ink); border-bottom: 4px solid var(--accent);
+      font: 800 17px/1 var(--mono);
     }
     .brand-copy { min-width: 0; }
     .eyebrow { margin: 0 0 4px; font: 700 9px/1.2 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
-    h1 { margin: 0; font-size: clamp(16px, 1.55vw, 21px); line-height: 1.1; letter-spacing: -.045em; font-weight: 800; }
+    h1 { margin: 0; font-size: clamp(17px, 1.6vw, 22px); line-height: 1.1; letter-spacing: -.045em; font-weight: 800; }
     .masthead-note { margin: 0; text-align: right; color: var(--muted); font: 10px/1.55 var(--mono); letter-spacing: .04em; }
     .editor-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
     .section-title { margin: 0; font: 800 10px/1.2 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
     .node-count { color: var(--muted); font: 10px/1.2 var(--mono); white-space: nowrap; }
-    .node-scroller { min-height: 0; flex: 1; overflow-x: auto; overflow-y: hidden; display: flex; align-items: stretch; gap: 10px; padding: 1px 2px 7px 1px; scrollbar-width: thin; scrollbar-color: #b8b8b0 transparent; }
-    .node-scroller::-webkit-scrollbar { height: 7px; }
-    .node-scroller::-webkit-scrollbar-thumb { background: #b8b8b0; border-radius: 0; }
+
+    .node-scroller {
+      min-width: 0; width: 100%; max-width: 100%; min-height: 0; flex: 1; overflow-x: auto; overflow-y: hidden;
+      display: flex; align-items: stretch; gap: 12px;
+      padding: 1px 2px 8px 1px;
+      scrollbar-width: thin; scrollbar-color: #999991 transparent;
+      scroll-behavior: smooth;
+    }
+    .node-scroller::-webkit-scrollbar { height: 8px; }
+    .node-scroller::-webkit-scrollbar-track { background: transparent; }
+    .node-scroller::-webkit-scrollbar-thumb { background: #999991; border: 2px solid var(--paper); }
 
     .node-card {
-      position: relative; flex: 0 0 306px; width: 306px; min-width: 0;
-      border: 1px solid var(--line-strong); border-top: 3px solid var(--ink);
-      background: var(--surface); padding: 10px 11px 11px; min-height: 0;
-      display: flex; flex-direction: column; gap: 9px;
+      position: relative; flex: 0 0 360px; width: 360px; min-width: 0;
+      border: 1px solid var(--line-strong); border-top: 4px solid var(--ink);
+      background: var(--surface); padding: 11px 12px 12px; min-height: 0;
+      display: flex; flex-direction: column; gap: 8px;
+      transition: border-color var(--transition-fast), transform var(--transition-fast);
     }
     .node-card.is-start { border-top-color: var(--green); }
     .node-card.is-finish { border-top-color: var(--accent); }
-    .node-card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .node-card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 32px; }
     .node-card-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .node-index { font: 700 10px/1 var(--mono); color: var(--muted); }
-    .node-name-heading { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 800; }
-    .icon-button { width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid var(--line); background: white; color: var(--muted); font: 17px/1 var(--sans); padding: 0; }
-    .icon-button:hover { border-color: var(--accent); color: var(--accent); }
+    .node-index { font: 800 10px/1 var(--mono); color: var(--muted); }
+    .node-name-heading { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 800; }
+    .node-level-badge { display: inline-flex; align-items: center; min-height: 24px; padding: 0 6px; border: 1px solid var(--line); color: var(--muted); background: var(--paper); font: 700 8px/1 var(--mono); letter-spacing: .05em; white-space: nowrap; }
+    .icon-button { width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid var(--line); background: white; color: var(--muted); font: 22px/1 var(--sans); padding: 0; transition: color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast); }
+    .icon-button:hover { border-color: var(--accent); color: var(--accent); transform: scale(1.04); }
     .field-row { display: grid; grid-template-columns: minmax(0, 1fr) 124px; gap: 8px; }
     .field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-    .field label, .mini-label { font: 700 8px/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+    .field label, .mini-label { font: 800 8px/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
     .field input, .field select, .edge-form select, .edge-form input {
-      width: 100%; height: 31px; border: 1px solid var(--line); border-radius: 0;
-      background: #fff; color: var(--ink); padding: 0 8px; min-width: 0; font-size: 11px;
+      width: 100%; height: 36px; border: 1px solid var(--line-strong); border-radius: 0;
+      background: #fff; color: var(--ink); padding: 0 9px; min-width: 0; font-size: 12px;
     }
     .field input:focus, .field select:focus, .edge-form input:focus, .edge-form select:focus { border-color: var(--ink); outline: none; }
-    .connections { min-height: 0; display: flex; flex-direction: column; gap: 5px; }
-    .connections-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-    .connection-list { display: flex; flex-wrap: wrap; gap: 5px; min-height: 20px; max-height: 44px; overflow-y: auto; align-content: flex-start; }
-    .connection-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 21px; max-width: 100%; padding: 2px 4px 2px 6px; border: 1px solid var(--line); background: #f8f8f5; font: 9px/1.2 var(--mono); }
+    .connections { min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: 5px; }
+    .connections-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 13px; }
+    .connection-list { display: flex; flex-wrap: wrap; gap: 5px; min-height: 30px; max-height: 54px; overflow-y: auto; align-content: flex-start; padding: 1px 1px 2px 0; }
+    .connection-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; max-width: 100%; padding: 2px 5px 2px 7px; border: 1px solid var(--line); background: #f7f7f3; font: 10px/1.2 var(--mono); }
     .connection-chip strong { font-weight: 800; }
-    .connection-chip button { border: 0; background: transparent; color: var(--muted); padding: 0 2px; font-size: 12px; line-height: 1; }
+    .connection-chip button { border: 0; background: transparent; color: var(--muted); padding: 0 2px; min-width: 20px; min-height: 20px; font-size: 15px; line-height: 1; }
     .connection-chip button:hover { color: var(--accent); }
-    .empty-edges { color: #9a9a93; font: 9px/1.4 var(--mono); }
-    .edge-form { display: grid; grid-template-columns: minmax(0, 1fr) 58px 30px; gap: 5px; margin-top: auto; }
-    .edge-form select, .edge-form input { height: 29px; font-size: 10px; padding: 0 6px; }
-    .edge-add { border: 1px solid var(--ink); background: var(--ink); color: #fff; font-size: 16px; line-height: 1; padding: 0; }
-    .edge-add:hover { background: var(--accent); border-color: var(--accent); }
+    .empty-edges { align-self: flex-start; color: #92928a; font: 9px/1.4 var(--mono); padding-top: 5px; }
+    .edge-form { display: grid; grid-template-columns: minmax(0, 1fr) 76px 38px; gap: 7px; margin-top: auto; align-items: end; }
+    .edge-form select, .edge-form input { height: 38px; font-size: 11px; padding: 0 7px; }
+    .edge-add { height: 38px; border: 1px solid var(--ink); background: var(--ink); color: #fff; font-size: 21px; line-height: 1; padding: 0; transition: background var(--transition-fast), transform var(--transition-fast); }
+    .edge-add:hover { background: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
 
-    .graph-panel { min-height: 0; position: relative; overflow: hidden; background: var(--surface); }
-    .graph-topline { position: absolute; z-index: 1; top: 17px; left: 24px; right: 24px; display: flex; align-items: center; justify-content: space-between; pointer-events: none; gap: 16px; }
-    .graph-label { padding: 6px 8px; background: rgb(255 255 255 / 92%); border: 1px solid var(--line); font: 800 9px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
-    .graph-legend { display: flex; gap: 13px; align-items: center; color: var(--muted); background: rgb(255 255 255 / 92%); padding: 6px 8px; border: 1px solid var(--line); font: 9px/1 var(--mono); }
+    .editor-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 0 4px 0 1px; }
+    .add-node-button { width: 76px; height: 76px; display: grid; place-items: center; border: 2px solid var(--ink); background: var(--surface); color: var(--ink); font: 42px/1 var(--sans); padding: 0; transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast), border-color var(--transition-fast); }
+    .add-node-button:hover { border-color: var(--accent); background: var(--accent); color: #fff; transform: translateY(-2px); }
+    .solve-button { min-width: 184px; height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 0 19px; border: 2px solid var(--accent); background: var(--accent); color: #fff; font: 900 15px/1 var(--mono); letter-spacing: .12em; transition: background var(--transition-fast), transform var(--transition-fast), border-color var(--transition-fast); }
+    .solve-button:hover { background: var(--accent-dark); border-color: var(--accent-dark); transform: translateY(-2px); }
+    .solve-arrow { font-size: 24px; line-height: 1; }
+
+    .graph-panel { min-width: 0; width: 100%; min-height: 0; position: relative; overflow: hidden; background: var(--surface); }
+    .graph-canvas { position: absolute; z-index: 0; inset: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: #b8b8b0 transparent; }
+    .graph-canvas::-webkit-scrollbar { width: 8px; height: 8px; }
+    .graph-canvas::-webkit-scrollbar-thumb { background: #b8b8b0; }
+    #graphSvg { display: block; background: var(--surface); }
+    .graph-topline { position: absolute; z-index: 2; top: 15px; left: 24px; right: 24px; display: flex; align-items: center; justify-content: space-between; pointer-events: none; gap: 16px; }
+    .graph-label { padding: 7px 9px; background: #fff; border: 1px solid var(--ink); border-left: 4px solid var(--accent); font: 800 9px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .graph-legend { display: flex; gap: 13px; align-items: center; color: var(--muted); background: #fff; padding: 7px 9px; border: 1px solid var(--line-strong); font: 9px/1 var(--mono); }
     .legend-item { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
-    .legend-dot { display: inline-block; width: 7px; height: 7px; background: var(--green); }
+    .legend-dot { display: inline-block; width: 8px; height: 8px; background: var(--green); }
     .legend-dot.finish { background: var(--accent); }
-    #graphSvg { display: block; width: 100%; height: 100%; background: var(--surface); }
-    .edge-path { fill: none; stroke: #96968f; stroke-width: 1.65; vector-effect: non-scaling-stroke; marker-end: url(#arrow); }
-    .edge-path.is-solution { stroke: var(--accent); stroke-width: 3; marker-end: url(#arrow-solution); }
-    .edge-label-bg { fill: #fff; stroke: #e1e1da; stroke-width: 1; }
-    .edge-label { fill: var(--ink); text-anchor: middle; dominant-baseline: central; font: 700 12px var(--mono); }
+    .edge-path { fill: none; stroke: #92928b; stroke-width: 1.7; vector-effect: non-scaling-stroke; marker-end: url(#arrow); }
+    .edge-path.is-solution { stroke: var(--accent); stroke-width: 3.2; marker-end: url(#arrow-solution); }
+    .edge-label-bg { fill: #fff; stroke: #d1d1ca; stroke-width: 1; }
+    .edge-label { fill: var(--ink); text-anchor: middle; dominant-baseline: central; font: 800 13px var(--mono); }
+    .graph-node { cursor: pointer; outline: none; }
+    .graph-node.start, .graph-node.finish { cursor: not-allowed; }
     .graph-node-rect { fill: #fff; stroke: var(--ink); stroke-width: 1.8; vector-effect: non-scaling-stroke; }
-    .graph-node.start .graph-node-rect { stroke: var(--green); stroke-width: 2.5; }
-    .graph-node.finish .graph-node-rect { stroke: var(--accent); stroke-width: 2.5; }
-    .graph-node.solution .graph-node-rect { fill: #fff1ef; stroke: var(--accent); stroke-width: 3; }
-    .graph-node-text { fill: var(--ink); text-anchor: middle; dominant-baseline: central; font: 800 13px var(--mono); }
-    .graph-node-role { font: 700 8px var(--mono); fill: var(--muted); text-anchor: middle; letter-spacing: .1em; }
+    .graph-node.start .graph-node-rect { stroke: var(--green); stroke-width: 3; }
+    .graph-node.finish .graph-node-rect { stroke: var(--accent); stroke-width: 3; }
+    .graph-node.solution .graph-node-rect { fill: #fff0ee; stroke: var(--accent); stroke-width: 3.5; }
+    .graph-node.selected .graph-node-rect { stroke: var(--accent); stroke-width: 4; stroke-dasharray: 5 3; }
+    .graph-node-text { fill: var(--ink); text-anchor: middle; dominant-baseline: central; font: 900 15px var(--mono); }
+    .graph-node-role { font: 800 9px var(--mono); fill: var(--muted); text-anchor: middle; letter-spacing: .08em; }
+    .level-header { fill: #77776f; text-anchor: middle; font: 800 10px var(--mono); letter-spacing: .1em; }
+    .level-divider { stroke: #e7e7e1; stroke-width: 1; stroke-dasharray: 3 7; }
 
-    .solution-card { position: absolute; z-index: 2; left: 24px; top: 59px; width: min(330px, calc(100% - 48px)); padding: 13px 14px; border: 1px solid var(--ink); border-left: 4px solid var(--accent); background: rgb(255 255 255 / 96%); box-shadow: var(--shadow); }
+    .level-move-panel { position: absolute; z-index: 4; top: 58px; right: 24px; display: flex; align-items: center; gap: 14px; max-width: calc(100% - 48px); padding: 10px 12px; border: 1px solid var(--ink); border-left: 4px solid var(--accent); background: #fff; box-shadow: var(--shadow); }
+    .level-move-panel[hidden] { display: none; }
+    .selected-node-copy { display: flex; flex-direction: column; gap: 4px; min-width: 85px; }
+    .selected-node-label { margin: 0; color: var(--muted); font: 800 8px/1.2 var(--mono); letter-spacing: .12em; }
+    .selected-node-name { font-size: 13px; font-weight: 900; }
+    .selected-node-level { color: var(--muted); font: 9px/1.2 var(--mono); }
+    .level-move-actions { display: flex; gap: 6px; }
+    .level-button { min-height: var(--target-minimum); padding: 0 12px; border: 1px solid var(--ink); background: #fff; color: var(--ink); font: 800 9px/1 var(--mono); letter-spacing: .05em; transition: color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast); }
+    .level-button:hover:not(:disabled) { background: var(--ink); color: #fff; transform: translateY(-1px); }
+    .level-button--right { border-color: var(--accent); background: var(--accent); color: #fff; }
+    .level-button--right:hover:not(:disabled) { background: var(--accent-dark); }
+
+    .solution-card { position: absolute; z-index: 3; left: 24px; top: 96px; width: min(330px, calc(100% - 48px)); padding: 13px 14px; border: 1px solid var(--ink); border-left: 4px solid var(--accent); background: rgb(255 255 255 / 97%); box-shadow: var(--shadow); }
     .solution-card[hidden] { display: none; }
     .solution-label { margin: 0 0 7px; font: 800 9px/1 var(--mono); letter-spacing: .13em; text-transform: uppercase; color: var(--muted); }
-    .solution-value { margin: 0; font-size: 18px; line-height: 1.1; font-weight: 800; letter-spacing: -.04em; overflow-wrap: anywhere; }
+    .solution-value { margin: 0; font-size: 19px; line-height: 1.1; font-weight: 900; letter-spacing: -.04em; overflow-wrap: anywhere; }
     .solution-path { margin: 8px 0 0; color: var(--muted); font: 10px/1.6 var(--mono); overflow-wrap: anywhere; }
     .solution-path strong { color: var(--ink); }
-    .graph-footer { position: absolute; left: 24px; bottom: 18px; z-index: 1; font: 9px/1.4 var(--mono); color: var(--muted); background: rgb(255 255 255 / 90%); padding: 5px 7px; border: 1px solid var(--line); }
-
-    .floating-actions { position: fixed; z-index: 10; right: 24px; bottom: 22px; display: flex; align-items: stretch; gap: 8px; filter: drop-shadow(0 6px 12px rgb(0 0 0 / 14%)); }
-    .add-node-button { width: 54px; height: 54px; display: grid; place-items: center; border: 1px solid var(--ink); background: #fff; color: var(--ink); font: 30px/1 var(--sans); padding: 0; }
-    .add-node-button:hover { border-color: var(--accent); color: var(--accent); }
-    .solve-button { min-width: 142px; height: 54px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 17px; border: 1px solid var(--accent); background: var(--accent); color: #fff; font: 800 11px/1 var(--mono); letter-spacing: .1em; }
-    .solve-button:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
-    .solve-button:disabled, .add-node-button:disabled { opacity: .6; cursor: wait; }
-    .solve-arrow { font-size: 18px; line-height: 1; }
-    .toast { position: fixed; z-index: 20; bottom: 91px; right: 24px; max-width: min(420px, calc(100vw - 48px)); padding: 10px 13px; border: 1px solid var(--ink); background: var(--ink); color: #fff; box-shadow: var(--shadow); font: 11px/1.5 var(--mono); }
+    .graph-footer { position: absolute; left: 24px; bottom: 18px; z-index: 2; font: 9px/1.4 var(--mono); color: var(--muted); background: rgb(255 255 255 / 94%); padding: 6px 8px; border: 1px solid var(--line); }
+    .toast { position: fixed; z-index: 20; bottom: 18px; right: 24px; max-width: min(420px, calc(100vw - 48px)); padding: 12px 15px; border: 1px solid var(--ink); background: var(--ink); color: #fff; box-shadow: var(--shadow); font: 11px/1.5 var(--mono); }
     .toast[hidden] { display: none; }
     .toast.error { background: var(--accent-dark); border-color: var(--accent-dark); }
 
     @media (min-width: 1500px) {
       .editor-panel { padding-left: 32px; padding-right: 32px; }
-      .node-card { flex-basis: 330px; width: 330px; }
+      .node-card { flex-basis: 380px; width: 380px; }
     }
     @media (max-width: 760px) {
       body { overflow: auto; }
-      .app-shell { min-height: 700px; height: 100dvh; grid-template-rows: minmax(300px, 39%) minmax(320px, 1fr); }
+      .app-shell { min-height: 780px; height: max(100dvh, 780px); grid-template-rows: minmax(320px, 42%) minmax(390px, 1fr); }
       .editor-panel { padding: 12px 12px 9px; }
       .masthead { margin-bottom: 10px; }
       .masthead-note { display: none; }
-      .node-card { flex-basis: 292px; width: 292px; }
+      .node-card { flex-basis: 328px; width: 328px; }
+      .editor-actions { gap: 8px; }
+      .add-node-button { width: 64px; height: 64px; }
+      .solve-button { min-width: 154px; height: 64px; padding: 0 14px; font-size: 13px; }
       .graph-topline { top: 10px; left: 12px; right: 12px; }
-      .graph-legend { gap: 8px; font-size: 8px; }
-      .solution-card { left: 12px; top: 49px; }
-      .graph-footer { left: 12px; bottom: 12px; max-width: 50%; }
-      .floating-actions { right: 12px; bottom: 12px; gap: 6px; }
-      .add-node-button, .solve-button { height: 48px; }
-      .add-node-button { width: 48px; }
-      .solve-button { min-width: 122px; padding: 0 12px; }
-      .toast { bottom: 70px; right: 12px; }
+      .graph-legend { gap: 8px; font-size: 8px; padding: 6px; }
+      .graph-label { padding: 6px; }
+      .graph-node-text { font-size: 11px; }
+      .graph-node-role { font-size: 7px; letter-spacing: .04em; }
+      .level-move-panel { top: 56px; right: 12px; left: 12px; max-width: none; justify-content: space-between; gap: 8px; padding: 8px; }
+      .level-button { padding: 0 8px; min-height: 42px; font-size: 8px; }
+      .selected-node-copy { min-width: 66px; }
+      .solution-card { left: 12px; top: 112px; width: min(300px, calc(100% - 24px)); }
+      .graph-footer { left: 12px; bottom: 12px; max-width: calc(100% - 24px); }
+      .toast { bottom: 12px; right: 12px; max-width: calc(100vw - 24px); }
     }
-    @media (max-height: 650px) and (min-width: 761px) {
-      .app-shell { grid-template-rows: minmax(235px, 38%) minmax(0, 1fr); }
-      .editor-panel { padding-top: 10px; padding-bottom: 7px; }
-      .masthead { margin-bottom: 7px; min-height: 36px; }
-      .node-card { padding: 7px 9px; gap: 6px; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
     }
   </style>
 </head>
@@ -203,22 +248,30 @@
           <span class="legend-item"><i class="legend-dot finish" aria-hidden="true"></i>DESTINATION</span>
         </div>
       </div>
-      <svg id="graphSvg" role="img" aria-label="Preview of the configured weighted graph" preserveAspectRatio="xMidYMid meet">
-        <desc>Connections and weights appear here as they are configured above. The algorithm runs only when Solve is pressed.</desc>
-      </svg>
+      <div class="graph-canvas" id="graphCanvas">
+        <svg id="graphSvg" role="img" aria-label="Preview of the configured weighted graph" preserveAspectRatio="xMidYMid meet">
+          <desc>Connections and weights appear here as they are configured above. The algorithm runs only when Solve is pressed.</desc>
+        </svg>
+      </div>
+      <div class="level-move-panel" id="levelMovePanel" hidden aria-live="polite">
+        <div class="selected-node-copy">
+          <p class="selected-node-label">SELECTED NODE</p>
+          <strong class="selected-node-name" id="selectedNodeName">—</strong>
+          <span class="selected-node-level" id="selectedNodeLevel">LEVEL 1</span>
+        </div>
+        <div class="level-move-actions">
+          <button type="button" class="level-button" id="moveLeftButton">← MOVE LEFT</button>
+          <button type="button" class="level-button level-button--right" id="moveRightButton">MOVE RIGHT →</button>
+        </div>
+      </div>
       <aside class="solution-card" id="solutionCard" aria-live="polite" hidden>
         <p class="solution-label">03 / Dijkstra result</p>
         <p class="solution-value" id="solutionValue"></p>
         <p class="solution-path" id="solutionPath"></p>
       </aside>
-      <div class="graph-footer">PREVIEW ONLY · SOLVE TO CALCULATE THE SHORTEST PATH</div>
+      <div class="graph-footer">VISUAL LEVELS ONLY · SOLVE TO CALCULATE THE SHORTEST PATH</div>
     </section>
   </main>
-
-  <div class="floating-actions" aria-label="Graph actions">
-    <button type="button" class="add-node-button" id="addNodeButton" aria-label="Add node" title="Add node">+</button>
-    <button type="button" class="solve-button" id="solveButton"><span>SOLVE</span><span class="solve-arrow" aria-hidden="true">↗</span></button>
-  </div>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
   <script>
@@ -227,22 +280,27 @@
 
       const nodeCards = document.getElementById('nodeCards');
       const nodeCount = document.getElementById('nodeCount');
+      const graphCanvas = document.getElementById('graphCanvas');
       const graphSvg = document.getElementById('graphSvg');
+      const levelMovePanel = document.getElementById('levelMovePanel');
+      const selectedNodeName = document.getElementById('selectedNodeName');
+      const selectedNodeLevel = document.getElementById('selectedNodeLevel');
+      const moveLeftButton = document.getElementById('moveLeftButton');
+      const moveRightButton = document.getElementById('moveRightButton');
       const solutionCard = document.getElementById('solutionCard');
       const solutionValue = document.getElementById('solutionValue');
       const solutionPath = document.getElementById('solutionPath');
       const toast = document.getElementById('toast');
-      const addNodeButton = document.getElementById('addNodeButton');
-      const solveButton = document.getElementById('solveButton');
-      let appState = { nodes: [], solution: null };
+      let appState = { nodes: [], max_level: 2, solution: null };
+      let selectedNodeId = null;
+      let busyAction = '';
       let toastTimer = null;
 
       const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, char => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
       })[char]);
       const getNode = id => appState.nodes.find(node => node.id === id);
-      const nodeName = id => getNode(id)?.name?.trim() || 'SIN NOMBRE';
-      const roleLabel = role => role === 'start' ? 'START' : role === 'finish' ? 'DESTINATION' : 'NODE';
+      const nodeName = id => getNode(id)?.name?.trim() || 'UNNAMED NODE';
 
       function showToast(message, isError = true) {
         window.clearTimeout(toastTimer);
@@ -263,6 +321,9 @@
           const payload = await response.json();
           if (payload.state) {
             appState = payload.state;
+            if (!getNode(selectedNodeId) || ['start', 'finish'].includes(getNode(selectedNodeId)?.role)) {
+              selectedNodeId = null;
+            }
             renderAll();
           }
           if (!response.ok) {
@@ -278,15 +339,17 @@
 
       async function loadState() {
         const payload = await api('/api/state');
-        if (!payload) return;
-        appState = payload.state;
-        renderAll();
+        if (payload) {
+          appState = payload.state;
+          renderAll();
+        }
       }
 
       function renderCards() {
         nodeCount.textContent = `${String(appState.nodes.length).padStart(2, '0')} NODES`;
-        nodeCards.innerHTML = appState.nodes.map((node, index) => {
+        const cards = appState.nodes.map((node, index) => {
           const cardClass = node.role === 'start' ? ' is-start' : node.role === 'finish' ? ' is-finish' : '';
+          const level = node.role === 'start' ? 'LEVEL 0 · FIXED' : node.role === 'finish' ? 'LAST LEVEL · FIXED' : `LEVEL ${node.level ?? 1}`;
           const outgoing = node.edges.map(edge => `
             <span class="connection-chip">
               <span>${escapeHTML(nodeName(edge.to))}</span>
@@ -298,7 +361,15 @@
           ).join('');
           const removeButton = appState.nodes.length > 2
             ? `<button type="button" class="icon-button" aria-label="Delete node ${escapeHTML(node.name)}" title="Delete node" data-action="delete-node" data-node-id="${escapeHTML(node.id)}">×</button>`
-            : '<span aria-hidden="true" style="width:26px;height:26px"></span>';
+            : '<span aria-hidden="true" style="width:34px;height:34px"></span>';
+          const roleField = node.role
+            ? `<select id="role-${escapeHTML(node.id)}" disabled aria-label="Fixed node role"><option selected>${node.role === 'start' ? 'Start · fixed left' : 'Destination · fixed right'}</option></select>`
+            : `<select id="role-${escapeHTML(node.id)}" data-action="update-role" data-node-id="${escapeHTML(node.id)}">
+                 <option value="" selected>Regular</option>
+                 <option value="start">Start</option>
+                 <option value="finish">Destination</option>
+               </select>`;
+
           return `
             <article class="node-card${cardClass}" data-card-id="${escapeHTML(node.id)}">
               <div class="node-card-head">
@@ -306,6 +377,7 @@
                   <span class="node-index">${String(index + 1).padStart(2, '0')}</span>
                   <span class="node-name-heading">${escapeHTML(node.name.trim() || 'UNNAMED NODE')}</span>
                 </div>
+                <span class="node-level-badge">${escapeHTML(level)}</span>
                 ${removeButton}
               </div>
               <div class="field-row">
@@ -315,11 +387,7 @@
                 </div>
                 <div class="field">
                   <label for="role-${escapeHTML(node.id)}">Role</label>
-                  <select id="role-${escapeHTML(node.id)}" data-action="update-role" data-node-id="${escapeHTML(node.id)}">
-                    <option value="" ${node.role === '' ? 'selected' : ''}>Regular</option>
-                    <option value="start" ${node.role === 'start' ? 'selected' : ''}>Start</option>
-                    <option value="finish" ${node.role === 'finish' ? 'selected' : ''}>Destination</option>
-                  </select>
+                  ${roleField}
                 </div>
               </div>
               <div class="connections">
@@ -336,42 +404,62 @@
               </form>
             </article>`;
         }).join('');
+
+        const addDisabled = busyAction === 'add' || appState.nodes.length >= 40;
+        const solveDisabled = busyAction === 'solve';
+        nodeCards.innerHTML = cards + `
+          <div class="editor-actions" aria-label="Graph actions">
+            <button type="button" class="add-node-button" data-action="add-node" aria-label="Add node" title="Add node" ${addDisabled ? 'disabled' : ''}>+</button>
+            <button type="button" class="solve-button" data-action="solve" ${solveDisabled ? 'disabled' : ''}>
+              <span>${solveDisabled ? 'SOLVING…' : 'SOLVE'}</span><span class="solve-arrow" aria-hidden="true">↗</span>
+            </button>
+          </div>`;
       }
 
-      function nodeBoxSize(node) {
-        const width = Math.max(92, Math.min(170, (node.name.trim().length * 8) + 32));
-        return { width, height: 48 };
-      }
-
-      function edgePoint(from, to, box, reverse = false) {
-        const dx = to.x - from.x;
-        const dy = to.y - from.y;
-        const safeDx = Math.abs(dx) < 0.001 ? 0.001 : dx;
-        const safeDy = Math.abs(dy) < 0.001 ? 0.001 : dy;
-        const factor = 1 / Math.max(Math.abs(safeDx) / (box.width / 2), Math.abs(safeDy) / (box.height / 2));
-        const sign = reverse ? -1 : 1;
-        return { x: from.x + dx * factor * sign, y: from.y + dy * factor * sign };
+      function nodeBoxSize(node, maxWidth = 210) {
+        const nameLength = (node.name || '').trim().length;
+        const naturalWidth = Math.max(88, Math.min(210, nameLength * 9 + 48));
+        return { width: Math.min(naturalWidth, maxWidth), height: 68 };
       }
 
       function renderGraph() {
         const visibleNodes = appState.nodes.filter(node => node.name.trim());
-        const width = Math.max(graphSvg.parentElement.clientWidth, 480);
-        const height = Math.max(graphSvg.parentElement.clientHeight, 300);
-        const columns = Math.min(5, Math.max(2, Math.floor((width - 100) / 190)));
-        const rows = Math.max(1, Math.ceil(visibleNodes.length / columns));
-        const virtualWidth = Math.max(width, columns * 190 + 90);
-        const virtualHeight = Math.max(height, rows * 135 + 90);
+        const width = Math.max(graphCanvas.clientWidth, 320);
+        const height = Math.max(graphCanvas.clientHeight, 300);
+        const maxLevel = Math.max(2, Number(appState.max_level) || 2);
+        const compact = width < 600;
+        const leftPad = compact ? 62 : 110;
+        const rightPad = leftPad;
+        const availableGap = (width - leftPad - rightPad) / maxLevel;
+        const canFitLevels = availableGap >= (compact ? 82 : 168);
+        const levelGap = canFitLevels ? availableGap : 230;
+        const virtualWidth = canFitLevels ? width : leftPad + maxLevel * levelGap + rightPad;
+        const nodeMaxWidth = Math.max(70, Math.min(210, levelGap * (compact ? 0.72 : 0.78)));
+
+        const levels = Array.from({ length: maxLevel + 1 }, () => []);
+        visibleNodes.forEach(node => {
+          let level;
+          if (node.role === 'start') level = 0;
+          else if (node.role === 'finish') level = maxLevel;
+          else level = Math.min(maxLevel - 1, Math.max(1, Number(node.level) || 1));
+          levels[level].push({ ...node, visualLevel: level });
+        });
+
+        const maxRows = Math.max(1, ...levels.map(levelNodes => levelNodes.length));
+        const virtualHeight = Math.max(height, 180 + maxRows * 120);
+        const topPad = 126;
+        const bottomPad = 70;
+        const verticalSpace = virtualHeight - topPad - bottomPad;
+        graphSvg.style.width = `${virtualWidth}px`;
+        graphSvg.style.height = `${virtualHeight}px`;
         graphSvg.setAttribute('viewBox', `0 0 ${virtualWidth} ${virtualHeight}`);
 
         const positions = new Map();
-        visibleNodes.forEach((node, index) => {
-          const col = index % columns;
-          const row = Math.floor(index / columns);
-          positions.set(node.id, {
-            x: virtualWidth * (col + 1) / (columns + 1),
-            y: virtualHeight * (row + 1) / (rows + 1),
-            box: nodeBoxSize(node),
-            node
+        levels.forEach((levelNodes, levelIndex) => {
+          const x = leftPad + levelIndex * levelGap;
+          levelNodes.forEach((node, rowIndex) => {
+            const y = topPad + ((rowIndex + 1) * verticalSpace / (levelNodes.length + 1));
+            positions.set(node.id, { x, y, box: nodeBoxSize(node, nodeMaxWidth), node });
           });
         });
 
@@ -383,6 +471,17 @@
           }
         }
 
+        const levelGuides = [];
+        for (let level = 0; level <= maxLevel; level++) {
+          const x = leftPad + level * levelGap;
+          const title = compact
+            ? (level === 0 ? 'START · 0' : level === maxLevel ? 'END · LAST' : `LEVEL ${level}`)
+            : (level === 0 ? 'START · LEVEL 0' : level === maxLevel ? 'DESTINATION · LAST LEVEL' : `BFS LEVEL ${level}`);
+          levelGuides.push(`
+            <line class="level-divider" x1="${x}" y1="88" x2="${x}" y2="${virtualHeight - 40}" />
+            <text class="level-header" x="${x}" y="76">${title}</text>`);
+        }
+
         const edges = [];
         visibleNodes.forEach(source => {
           const from = positions.get(source.id);
@@ -390,25 +489,28 @@
             const destination = positions.get(edge.to);
             if (!from || !destination) return;
             const to = destination;
+            const dx = to.x - from.x;
+            const dy = to.y - from.y;
+            const norm = Math.hypot(dx, dy) || 1;
+            const nx = -dy / norm;
+            const ny = dx / norm;
+            const startFactor = 1 / Math.max(Math.abs(dx) / (from.box.width / 2), Math.abs(dy) / (from.box.height / 2), 0.0001);
+            const endFactor = 1 / Math.max(Math.abs(dx) / (to.box.width / 2), Math.abs(dy) / (to.box.height / 2), 0.0001);
+            const start = { x: from.x + dx * startFactor, y: from.y + dy * startFactor };
+            const end = { x: to.x - dx * endFactor, y: to.y - dy * endFactor };
             const isReversePair = to.node.edges.some(item => item.to === source.id);
-            const curve = isReversePair ? (source.id < to.node.id ? 24 : -24) : 0;
-            const sx = to.x - from.x;
-            const sy = to.y - from.y;
-            const norm = Math.hypot(sx, sy) || 1;
-            const nx = -sy / norm;
-            const ny = sx / norm;
-            const startFactor = 1 / Math.max(Math.abs(sx) / (from.box.width / 2), Math.abs(sy) / (from.box.height / 2));
-            const endFactor = 1 / Math.max(Math.abs(sx) / (to.box.width / 2), Math.abs(sy) / (to.box.height / 2));
-            const start = { x: from.x + sx * startFactor, y: from.y + sy * startFactor };
-            const end = { x: to.x - sx * endFactor, y: to.y - sy * endFactor };
+            const sameLevel = from.node.visualLevel === to.node.visualLevel;
+            // Same-level links take a wide arc so they don't cut through other node boxes.
+            const curve = sameLevel
+              ? (source.id < to.node.id ? 260 : -260)
+              : isReversePair ? (source.id < to.node.id ? 30 : -30) : 0;
             const control = { x: (start.x + end.x) / 2 + nx * curve, y: (start.y + end.y) / 2 + ny * curve };
             const label = { x: (start.x + 2 * control.x + end.x) / 4, y: (start.y + 2 * control.y + end.y) / 4 };
-            const key = `${source.id}->${edge.to}`;
-            const isSolution = solutionEdges.has(key);
+            const isSolution = solutionEdges.has(`${source.id}->${edge.to}`);
             edges.push(`
               <g class="graph-edge">
                 <path class="edge-path${isSolution ? ' is-solution' : ''}" d="M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}" />
-                <rect class="edge-label-bg" x="${label.x - 18}" y="${label.y - 12}" width="36" height="24" rx="0" />
+                <rect class="edge-label-bg" x="${label.x - 21}" y="${label.y - 13}" width="42" height="26" />
                 <text class="edge-label" x="${label.x}" y="${label.y}">${escapeHTML(edge.weight)}</text>
               </g>`);
           });
@@ -419,30 +521,47 @@
           const { x, y, box } = position;
           const classes = ['graph-node', node.role || 'regular'];
           if (solution?.reachable && solution.pathIds?.includes(node.id)) classes.push('solution');
-          const roleText = node.role === 'start' ? 'START' : node.role === 'finish' ? 'DESTINATION' : '';
+          if (selectedNodeId === node.id) classes.push('selected');
+          const roleText = node.role === 'start' ? 'START' : node.role === 'finish' ? 'DESTINATION' : `LEVEL ${position.node.visualLevel}`;
+          const maxNameChars = Math.max(3, Math.floor((box.width - 20) / (compact ? 7 : 8.5)));
+          const displayName = node.name.trim().length > maxNameChars ? node.name.trim().slice(0, maxNameChars - 1) + '…' : node.name.trim();
           return `
-            <g class="${classes.join(' ')}" transform="translate(${x}, ${y})">
-              <title>${escapeHTML(node.name)}${roleText ? ` — ${roleText}` : ''}</title>
+            <g class="${classes.join(' ')}" transform="translate(${x}, ${y})" data-node-id="${escapeHTML(node.id)}" tabindex="0" role="button" aria-label="Select node ${escapeHTML(node.name)}${node.role ? ', fixed endpoint' : ', move between levels'}">
+              <title>${escapeHTML(node.name)}${node.role ? ` — ${node.role === 'start' ? 'start, fixed left' : 'destination, fixed right'}` : ` — level ${position.node.visualLevel}`}</title>
               <rect class="graph-node-rect" x="${-box.width / 2}" y="${-box.height / 2}" width="${box.width}" height="${box.height}" rx="0" />
-              <text class="graph-node-text" x="0" y="${roleText ? -3 : 0}">${escapeHTML(node.name.trim().length > 20 ? node.name.trim().slice(0, 19) + '…' : node.name.trim())}</text>
-              ${roleText ? `<text class="graph-node-role" x="0" y="15">${roleText}</text>` : ''}
+              <text class="graph-node-text" x="0" y="${node.role ? -5 : -3}">${escapeHTML(displayName)}</text>
+              <text class="graph-node-role" x="0" y="18">${escapeHTML(roleText)}</text>
             </g>`;
         }).join('');
 
         graphSvg.innerHTML = `
           <defs>
-            <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
-              <path d="M0,0 L0,6 L6,3 z" fill="#96968f"></path>
+            <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,7 L7,3.5 z" fill="#92928b"></path>
             </marker>
-            <marker id="arrow-solution" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
-              <path d="M0,0 L0,6 L6,3 z" fill="#e33c2f"></path>
+            <marker id="arrow-solution" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,7 L7,3.5 z" fill="#e3342b"></path>
             </marker>
           </defs>
+          ${levelGuides.join('')}
           ${edges.join('')}
           ${nodeMarkup}
           ${visibleNodes.length ? '' : `<text x="${virtualWidth / 2}" y="${virtualHeight / 2}" text-anchor="middle" fill="#77776f" font-family="ui-monospace,monospace" font-size="13">ADD A NAMED NODE TO BEGIN</text>`}
         `;
-        graphSvg.setAttribute('aria-label', `Graph preview with ${visibleNodes.length} named nodes and ${edges.length} directed connections`);
+        graphSvg.setAttribute('aria-label', `Preview graph with ${visibleNodes.length} named nodes, ${edges.length} connections, start on the left and destination on the right`);
+      }
+
+      function renderLevelMovePanel() {
+        const node = getNode(selectedNodeId);
+        if (!node || ['start', 'finish'].includes(node.role)) {
+          levelMovePanel.hidden = true;
+          return;
+        }
+        levelMovePanel.hidden = false;
+        selectedNodeName.textContent = node.name.trim() || 'UNNAMED NODE';
+        selectedNodeLevel.textContent = `BFS LEVEL ${node.level ?? 1}`;
+        moveLeftButton.disabled = busyAction === 'move' || Number(node.level) <= 1;
+        moveRightButton.disabled = busyAction === 'move';
       }
 
       function renderSolution() {
@@ -461,6 +580,7 @@
       function renderAll() {
         renderCards();
         renderGraph();
+        renderLevelMovePanel();
         renderSolution();
       }
 
@@ -500,39 +620,94 @@
         const button = event.target.closest('button[data-action]');
         if (!button) return;
         const { action, nodeId, targetId } = button.dataset;
+
         if (action === 'delete-node') {
           if (!window.confirm(`Delete node “${nodeName(nodeId)}” and all its connections?`)) return;
           await api(`/api/nodes/${encodeURIComponent(nodeId)}`, { method: 'DELETE' });
-        } else if (action === 'remove-edge') {
+          return;
+        }
+        if (action === 'remove-edge') {
           await api(`/api/nodes/${encodeURIComponent(nodeId)}/edges/${encodeURIComponent(targetId)}`, { method: 'DELETE' });
+          return;
+        }
+        if (action === 'add-node' && !busyAction) {
+          busyAction = 'add';
+          renderCards();
+          const previousCount = appState.nodes.length;
+          const payload = await api('/api/nodes', { method: 'POST', body: '{}' });
+          busyAction = '';
+          renderCards();
+          if (payload) {
+            const newest = appState.nodes[appState.nodes.length - 1];
+            nodeCards.scrollTo({ left: nodeCards.scrollWidth, behavior: 'smooth' });
+            window.setTimeout(() => document.getElementById(`name-${newest.id}`)?.focus(), 160);
+            if (appState.nodes.length > previousCount) showToast(`Node ${newest.name} added.`, false);
+          }
+          return;
+        }
+        if (action === 'solve' && !busyAction) {
+          busyAction = 'solve';
+          renderCards();
+          const payload = await api('/api/solve', { method: 'POST', body: '{}' });
+          busyAction = '';
+          renderCards();
+          renderSolution();
+          if (payload?.state?.solution?.reachable) showToast('Shortest path calculated.', false);
+          else if (payload?.state?.solution && !payload.state.solution.reachable) showToast(payload.state.solution.message, true);
         }
       });
 
-      addNodeButton.addEventListener('click', async () => {
-        addNodeButton.disabled = true;
-        const previousCount = appState.nodes.length;
-        const payload = await api('/api/nodes', { method: 'POST', body: '{}' });
-        addNodeButton.disabled = false;
-        if (payload) {
-          const newest = appState.nodes[appState.nodes.length - 1];
-          nodeCards.scrollTo({ left: nodeCards.scrollWidth, behavior: 'smooth' });
-          window.setTimeout(() => document.getElementById(`name-${newest.id}`)?.focus(), 120);
-          if (appState.nodes.length > previousCount) showToast(`Node ${newest.name} added.`, false);
+      function selectGraphNode(target) {
+        const node = getNode(target?.dataset?.nodeId);
+        if (!node) return;
+        if (node.role === 'start') {
+          selectedNodeId = null;
+          renderGraph();
+          renderLevelMovePanel();
+          showToast('The start node is locked to level 0 on the far left.', false);
+          return;
         }
+        if (node.role === 'finish') {
+          selectedNodeId = null;
+          renderGraph();
+          renderLevelMovePanel();
+          showToast('The destination is locked to the last level on the far right.', false);
+          return;
+        }
+        selectedNodeId = node.id;
+        renderGraph();
+        renderLevelMovePanel();
+      }
+
+      graphSvg.addEventListener('click', event => {
+        const node = event.target.closest('.graph-node[data-node-id]');
+        if (node) selectGraphNode(node);
+      });
+      graphSvg.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        const node = event.target.closest('.graph-node[data-node-id]');
+        if (!node) return;
+        event.preventDefault();
+        selectGraphNode(node);
       });
 
-      solveButton.addEventListener('click', async () => {
-        solveButton.disabled = true;
-        solveButton.querySelector('span:first-child').textContent = 'SOLVING…';
-        const payload = await api('/api/solve', { method: 'POST', body: '{}' });
-        solveButton.disabled = false;
-        solveButton.querySelector('span:first-child').textContent = 'SOLVE';
-        if (payload?.state?.solution?.reachable) showToast('Shortest path calculated.', false);
-        else if (payload?.state?.solution && !payload.state.solution.reachable) showToast(payload.state.solution.message, true);
-      });
+      async function moveSelectedNode(direction) {
+        if (!selectedNodeId || busyAction === 'move') return;
+        const nodeId = selectedNodeId;
+        busyAction = 'move';
+        renderLevelMovePanel();
+        await api(`/api/nodes/${encodeURIComponent(nodeId)}/level`, {
+          method: 'POST', body: JSON.stringify({ direction })
+        });
+        busyAction = '';
+        renderGraph();
+        renderLevelMovePanel();
+      }
+      moveLeftButton.addEventListener('click', () => moveSelectedNode('left'));
+      moveRightButton.addEventListener('click', () => moveSelectedNode('right'));
 
       if ('ResizeObserver' in window) {
-        new ResizeObserver(() => renderGraph()).observe(graphSvg.parentElement);
+        new ResizeObserver(() => renderGraph()).observe(graphCanvas);
       } else {
         window.addEventListener('resize', renderGraph);
       }
