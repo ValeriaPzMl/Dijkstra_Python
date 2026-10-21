@@ -3,67 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f4f4f0">
-  <title>Shortest Path — Dijkstra Studio</title>
+  <title>Shortest Path — Dijkstra</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <main class="app-shell">
-    <section class="editor-panel" aria-labelledby="pageTitle">
-      <header class="masthead">
-        <div class="brand">
-          <div class="brand-mark" aria-hidden="true">D.</div>
-          <div class="brand-copy">
-            <p class="eyebrow">Graph Lab / 001</p>
-            <h1 id="pageTitle">Shortest Path <span style="font-weight:400;color:#77776f">— Dijkstra</span></h1>
-          </div>
-        </div>
-        <p class="masthead-note">DIRECTED WEIGHTED GRAPH<br>NON-NEGATIVE WEIGHTS</p>
-      </header>
-      <div class="editor-meta">
-        <h2 class="section-title">01 / Define nodes &amp; connections</h2>
-        <span class="node-count" id="nodeCount">02 NODES</span>
-      </div>
-      <div class="node-scroller" id="nodeCards" aria-label="Node editor" aria-live="polite"></div>
-    </section>
-
-    <section class="graph-panel" aria-label="Graph visualization">
-      <div class="graph-topline">
-        <div class="graph-label">02 / Graph preview</div>
-        <div class="graph-legend" aria-label="Legend">
-          <span class="legend-item"><i class="legend-dot" aria-hidden="true"></i>START</span>
-          <span class="legend-item"><i class="legend-dot finish" aria-hidden="true"></i>DESTINATION</span>
-        </div>
-      </div>
-      <div class="graph-canvas" id="graphCanvas">
-        <svg id="graphSvg" role="img" aria-label="Preview of the configured weighted graph" preserveAspectRatio="xMidYMid meet">
-          <desc>Connections and weights appear here as they are configured above. The algorithm runs only when Solve is pressed.</desc>
-        </svg>
-      </div>
-      <div class="level-move-panel" id="levelMovePanel" hidden aria-live="polite">
-        <div class="selected-node-copy">
-          <p class="selected-node-label">SELECTED NODE</p>
-          <strong class="selected-node-name" id="selectedNodeName">—</strong>
-          <span class="selected-node-level" id="selectedNodeLevel">LEVEL 1</span>
-        </div>
-        <div class="level-move-actions">
-          <button type="button" class="level-button" id="moveLeftButton">← MOVE LEFT</button>
-          <button type="button" class="level-button level-button--right" id="moveRightButton">MOVE RIGHT →</button>
-        </div>
-      </div>
-      <aside class="solution-card" id="solutionCard" aria-live="polite" hidden>
-        <p class="solution-label">03 / Dijkstra result</p>
-        <p class="solution-value" id="solutionValue"></p>
-        <p class="solution-path" id="solutionPath"></p>
-      </aside>
-      <div class="graph-footer">VISUAL LEVELS ONLY · SOLVE TO CALCULATE THE SHORTEST PATH</div>
-    </section>
-  </main>
-  <button type="button" class="solve-button" id="solveButton">
-    <span id="solveLabel">SOLVE</span><span class="solve-arrow" aria-hidden="true">↗</span>
-  </button>
-  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-
+  <header>
+    <h1>Shortest Path</h1>
+    <h2>Dijkstra · <span id="nodeCount">2 nodes</span></h2>
+  </header>
+  <main id="nodeCards" aria-label="Node editor"></main>
+  <section id="graphPanel" aria-label="Graph">
+    <div id="graph"></div>
+    <aside id="levelMovePanel" hidden>
+      <h3 id="selectedNodeName"></h3><span id="selectedNodeLevel"></span>
+      <button type="button" id="moveLeftButton">← Left</button>
+      <button type="button" id="moveRightButton">Right →</button>
+    </aside>
+    <aside id="solutionCard" hidden><h3 id="solutionValue"></h3><p id="solutionPath"></p></aside>
+  </section>
+  <button type="button" id="solveButton"><span id="solveLabel">SOLVE</span> ↗</button>
+  <div id="toast" role="status" hidden></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>
