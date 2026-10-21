@@ -135,7 +135,7 @@
     .editor-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 0 4px 0 1px; }
     .add-node-button { width: 76px; height: 76px; display: grid; place-items: center; border: 2px solid var(--ink); background: var(--surface); color: var(--ink); font: 42px/1 var(--sans); padding: 0; transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast), border-color var(--transition-fast); }
     .add-node-button:hover { border-color: var(--accent); background: var(--accent); color: #fff; transform: translateY(-2px); }
-    .solve-button { min-width: 184px; height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 0 19px; border: 2px solid var(--accent); background: var(--accent); color: #fff; font: 900 15px/1 var(--mono); letter-spacing: .12em; transition: background var(--transition-fast), transform var(--transition-fast), border-color var(--transition-fast); }
+    .solve-button { position: fixed; z-index: 30; right: 24px; bottom: 18px; box-shadow: var(--shadow); min-width: 184px; height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 0 19px; border: 2px solid var(--accent); background: var(--accent); color: #fff; font: 900 15px/1 var(--mono); letter-spacing: .12em; transition: background var(--transition-fast), transform var(--transition-fast), border-color var(--transition-fast); }
     .solve-button:hover { background: var(--accent-dark); border-color: var(--accent-dark); transform: translateY(-2px); }
     .solve-arrow { font-size: 24px; line-height: 1; }
 
@@ -185,7 +185,7 @@
     .solution-path { margin: 8px 0 0; color: var(--muted); font: 10px/1.6 var(--mono); overflow-wrap: anywhere; }
     .solution-path strong { color: var(--ink); }
     .graph-footer { position: absolute; left: 24px; bottom: 18px; z-index: 2; font: 9px/1.4 var(--mono); color: var(--muted); background: rgb(255 255 255 / 94%); padding: 6px 8px; border: 1px solid var(--line); }
-    .toast { position: fixed; z-index: 20; bottom: 18px; right: 24px; max-width: min(420px, calc(100vw - 48px)); padding: 12px 15px; border: 1px solid var(--ink); background: var(--ink); color: #fff; box-shadow: var(--shadow); font: 11px/1.5 var(--mono); }
+    .toast { position: fixed; z-index: 40; bottom: 108px; right: 24px; max-width: min(420px, calc(100vw - 48px)); padding: 12px 15px; border: 1px solid var(--ink); background: var(--ink); color: #fff; box-shadow: var(--shadow); font: 11px/1.5 var(--mono); }
     .toast[hidden] { display: none; }
     .toast.error { background: var(--accent-dark); border-color: var(--accent-dark); }
 
@@ -213,7 +213,8 @@
       .selected-node-copy { min-width: 66px; }
       .solution-card { left: 12px; top: 112px; width: min(300px, calc(100% - 24px)); }
       .graph-footer { left: 12px; bottom: 12px; max-width: calc(100% - 24px); }
-      .toast { bottom: 12px; right: 12px; max-width: calc(100vw - 24px); }
+      .toast { bottom: 90px; right: 12px; max-width: calc(100vw - 24px); }
+      .solve-button { right: 12px; bottom: 12px; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
@@ -272,6 +273,9 @@
       <div class="graph-footer">VISUAL LEVELS ONLY · SOLVE TO CALCULATE THE SHORTEST PATH</div>
     </section>
   </main>
+  <button type="button" class="solve-button" id="solveButton">
+    <span id="solveLabel">SOLVE</span><span class="solve-arrow" aria-hidden="true">↗</span>
+  </button>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
   <script>
@@ -291,6 +295,9 @@
       const solutionValue = document.getElementById('solutionValue');
       const solutionPath = document.getElementById('solutionPath');
       const toast = document.getElementById('toast');
+      const solveButton = document.getElementById('solveButton');
+      const solveLabel = document.getElementById('solveLabel');
+      const graphPanel = graphCanvas.parentElement;
       let appState = { nodes: [], max_level: 2, solution: null };
       let selectedNodeId = null;
       let busyAction = '';
@@ -406,13 +413,11 @@
         }).join('');
 
         const addDisabled = busyAction === 'add' || appState.nodes.length >= 40;
-        const solveDisabled = busyAction === 'solve';
+        solveButton.disabled = busyAction === 'solve';
+        solveLabel.textContent = busyAction === 'solve' ? 'SOLVING…' : 'SOLVE';
         nodeCards.innerHTML = cards + `
           <div class="editor-actions" aria-label="Graph actions">
             <button type="button" class="add-node-button" data-action="add-node" aria-label="Add node" title="Add node" ${addDisabled ? 'disabled' : ''}>+</button>
-            <button type="button" class="solve-button" data-action="solve" ${solveDisabled ? 'disabled' : ''}>
-              <span>${solveDisabled ? 'SOLVING…' : 'SOLVE'}</span><span class="solve-arrow" aria-hidden="true">↗</span>
-            </button>
           </div>`;
       }
 
@@ -424,8 +429,11 @@
 
       function renderGraph() {
         const visibleNodes = appState.nodes.filter(node => node.name.trim());
-        const width = Math.max(graphCanvas.clientWidth, 320);
-        const height = Math.max(graphCanvas.clientHeight, 300);
+        // Measure the fixed-size panel (not the scrolling canvas) so scrollbars appearing
+        // or disappearing can never change the measurement and cause a resize feedback loop.
+        // 10px reserve keeps the SVG from triggering scrollbars by itself.
+        const width = Math.max(graphPanel.clientWidth - 10, 320);
+        const height = Math.max(graphPanel.clientHeight - 10, 300);
         const maxLevel = Math.max(2, Number(appState.max_level) || 2);
         const compact = width < 600;
         const leftPad = compact ? 62 : 110;
@@ -645,16 +653,18 @@
           }
           return;
         }
-        if (action === 'solve' && !busyAction) {
-          busyAction = 'solve';
-          renderCards();
-          const payload = await api('/api/solve', { method: 'POST', body: '{}' });
-          busyAction = '';
-          renderCards();
-          renderSolution();
-          if (payload?.state?.solution?.reachable) showToast('Shortest path calculated.', false);
-          else if (payload?.state?.solution && !payload.state.solution.reachable) showToast(payload.state.solution.message, true);
-        }
+      });
+
+      solveButton.addEventListener('click', async () => {
+        if (busyAction) return;
+        busyAction = 'solve';
+        renderCards();
+        const payload = await api('/api/solve', { method: 'POST', body: '{}' });
+        busyAction = '';
+        renderCards();
+        renderSolution();
+        if (payload?.state?.solution?.reachable) showToast('Shortest path calculated.', false);
+        else if (payload?.state?.solution && !payload.state.solution.reachable) showToast(payload.state.solution.message, true);
       });
 
       function selectGraphNode(target) {
@@ -707,7 +717,12 @@
       moveRightButton.addEventListener('click', () => moveSelectedNode('right'));
 
       if ('ResizeObserver' in window) {
-        new ResizeObserver(() => renderGraph()).observe(graphCanvas);
+        let lastW = 0, lastH = 0;
+        new ResizeObserver(() => {
+          if (graphPanel.clientWidth === lastW && graphPanel.clientHeight === lastH) return;
+          lastW = graphPanel.clientWidth; lastH = graphPanel.clientHeight;
+          renderGraph();
+        }).observe(graphPanel);
       } else {
         window.addEventListener('resize', renderGraph);
       }
