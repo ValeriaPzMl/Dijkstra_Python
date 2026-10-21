@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f4f0">
+  <title>Shortest Path — Dijkstra Studio</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f4f0;
+      --surface: #ffffff;
+      --ink: #171717;
+      --muted: #70706b;
+      --line: #d9d9d2;
+      --line-strong: #999991;
+      --accent: #e33c2f;
+      --accent-dark: #bb281f;
+      --green: #267454;
+      --shadow: 0 8px 26px rgb(20 20 20 / 8%);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; min-height: 100%; }
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 3px solid rgb(227 60 47 / 28%);
+      outline-offset: 2px;
+    }
+
+    .app-shell { height: 100dvh; min-height: 560px; display: grid; grid-template-rows: minmax(245px, 32%) minmax(0, 1fr); }
+    .editor-panel {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 18px 24px 14px;
+      border-bottom: 1px solid var(--ink);
+      background: var(--paper);
+      z-index: 2;
+    }
+    .masthead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 44px;
+      margin-bottom: 13px;
+    }
+    .brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
+    .brand-mark {
+      width: 34px; height: 34px; flex: 0 0 auto;
+      display: grid; place-items: center;
+      color: #fff; background: var(--accent); font: 800 17px/1 var(--mono);
+    }
+    .brand-copy { min-width: 0; }
+    .eyebrow { margin: 0 0 4px; font: 700 9px/1.2 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+    h1 { margin: 0; font-size: clamp(16px, 1.55vw, 21px); line-height: 1.1; letter-spacing: -.045em; font-weight: 800; }
+    .masthead-note { margin: 0; text-align: right; color: var(--muted); font: 10px/1.55 var(--mono); letter-spacing: .04em; }
+    .editor-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+    .section-title { margin: 0; font: 800 10px/1.2 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .node-count { color: var(--muted); font: 10px/1.2 var(--mono); white-space: nowrap; }
+    .node-scroller { min-height: 0; flex: 1; overflow-x: auto; overflow-y: hidden; display: flex; align-items: stretch; gap: 10px; padding: 1px 2px 7px 1px; scrollbar-width: thin; scrollbar-color: #b8b8b0 transparent; }
+    .node-scroller::-webkit-scrollbar { height: 7px; }
+    .node-scroller::-webkit-scrollbar-thumb { background: #b8b8b0; border-radius: 0; }
+
+    .node-card {
+      position: relative; flex: 0 0 306px; width: 306px; min-width: 0;
+      border: 1px solid var(--line-strong); border-top: 3px solid var(--ink);
+      background: var(--surface); padding: 10px 11px 11px; min-height: 0;
+      display: flex; flex-direction: column; gap: 9px;
+    }
+    .node-card.is-start { border-top-color: var(--green); }
+    .node-card.is-finish { border-top-color: var(--accent); }
+    .node-card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .node-card-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .node-index { font: 700 10px/1 var(--mono); color: var(--muted); }
+    .node-name-heading { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 800; }
+    .icon-button { width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid var(--line); background: white; color: var(--muted); font: 17px/1 var(--sans); padding: 0; }
+    .icon-button:hover { border-color: var(--accent); color: var(--accent); }
+    .field-row { display: grid; grid-template-columns: minmax(0, 1fr) 124px; gap: 8px; }
+    .field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+    .field label, .mini-label { font: 700 8px/1.2 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+    .field input, .field select, .edge-form select, .edge-form input {
+      width: 100%; height: 31px; border: 1px solid var(--line); border-radius: 0;
+      background: #fff; color: var(--ink); padding: 0 8px; min-width: 0; font-size: 11px;
+    }
+    .field input:focus, .field select:focus, .edge-form input:focus, .edge-form select:focus { border-color: var(--ink); outline: none; }
+    .connections { min-height: 0; display: flex; flex-direction: column; gap: 5px; }
+    .connections-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .connection-list { display: flex; flex-wrap: wrap; gap: 5px; min-height: 20px; max-height: 44px; overflow-y: auto; align-content: flex-start; }
+    .connection-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 21px; max-width: 100%; padding: 2px 4px 2px 6px; border: 1px solid var(--line); background: #f8f8f5; font: 9px/1.2 var(--mono); }
+    .connection-chip strong { font-weight: 800; }
+    .connection-chip button { border: 0; background: transparent; color: var(--muted); padding: 0 2px; font-size: 12px; line-height: 1; }
+    .connection-chip button:hover { color: var(--accent); }
+    .empty-edges { color: #9a9a93; font: 9px/1.4 var(--mono); }
+    .edge-form { display: grid; grid-template-columns: minmax(0, 1fr) 58px 30px; gap: 5px; margin-top: auto; }
+    .edge-form select, .edge-form input { height: 29px; font-size: 10px; padding: 0 6px; }
+    .edge-add { border: 1px solid var(--ink); background: var(--ink); color: #fff; font-size: 16px; line-height: 1; padding: 0; }
+    .edge-add:hover { background: var(--accent); border-color: var(--accent); }
+
+    .graph-panel { min-height: 0; position: relative; overflow: hidden; background: var(--surface); }
+    .graph-topline { position: absolute; z-index: 1; top: 17px; left: 24px; right: 24px; display: flex; align-items: center; justify-content: space-between; pointer-events: none; gap: 16px; }
+    .graph-label { padding: 6px 8px; background: rgb(255 255 255 / 92%); border: 1px solid var(--line); font: 800 9px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .graph-legend { display: flex; gap: 13px; align-items: center; color: var(--muted); background: rgb(255 255 255 / 92%); padding: 6px 8px; border: 1px solid var(--line); font: 9px/1 var(--mono); }
+    .legend-item { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+    .legend-dot { display: inline-block; width: 7px; height: 7px; background: var(--green); }
+    .legend-dot.finish { background: var(--accent); }
+    #graphSvg { display: block; width: 100%; height: 100%; background: var(--surface); }
+    .edge-path { fill: none; stroke: #96968f; stroke-width: 1.65; vector-effect: non-scaling-stroke; marker-end: url(#arrow); }
+    .edge-path.is-solution { stroke: var(--accent); stroke-width: 3; marker-end: url(#arrow-solution); }
+    .edge-label-bg { fill: #fff; stroke: #e1e1da; stroke-width: 1; }
+    .edge-label { fill: var(--ink); text-anchor: middle; dominant-baseline: central; font: 700 12px var(--mono); }
+    .graph-node-rect { fill: #fff; stroke: var(--ink); stroke-width: 1.8; vector-effect: non-scaling-stroke; }
+    .graph-node.start .graph-node-rect { stroke: var(--green); stroke-width: 2.5; }
+    .graph-node.finish .graph-node-rect { stroke: var(--accent); stroke-width: 2.5; }
+    .graph-node.solution .graph-node-rect { fill: #fff1ef; stroke: var(--accent); stroke-width: 3; }
+    .graph-node-text { fill: var(--ink); text-anchor: middle; dominant-baseline: central; font: 800 13px var(--mono); }
+    .graph-node-role { font: 700 8px var(--mono); fill: var(--muted); text-anchor: middle; letter-spacing: .1em; }
+
+    .solution-card { position: absolute; z-index: 2; left: 24px; top: 59px; width: min(330px, calc(100% - 48px)); padding: 13px 14px; border: 1px solid var(--ink); border-left: 4px solid var(--accent); background: rgb(255 255 255 / 96%); box-shadow: var(--shadow); }
+    .solution-card[hidden] { display: none; }
+    .solution-label { margin: 0 0 7px; font: 800 9px/1 var(--mono); letter-spacing: .13em; text-transform: uppercase; color: var(--muted); }
+    .solution-value { margin: 0; font-size: 18px; line-height: 1.1; font-weight: 800; letter-spacing: -.04em; overflow-wrap: anywhere; }
+    .solution-path { margin: 8px 0 0; color: var(--muted); font: 10px/1.6 var(--mono); overflow-wrap: anywhere; }
+    .solution-path strong { color: var(--ink); }
+    .graph-footer { position: absolute; left: 24px; bottom: 18px; z-index: 1; font: 9px/1.4 var(--mono); color: var(--muted); background: rgb(255 255 255 / 90%); padding: 5px 7px; border: 1px solid var(--line); }
+
+    .floating-actions { position: fixed; z-index: 10; right: 24px; bottom: 22px; display: flex; align-items: stretch; gap: 8px; filter: drop-shadow(0 6px 12px rgb(0 0 0 / 14%)); }
+    .add-node-button { width: 54px; height: 54px; display: grid; place-items: center; border: 1px solid var(--ink); background: #fff; color: var(--ink); font: 30px/1 var(--sans); padding: 0; }
+    .add-node-button:hover { border-color: var(--accent); color: var(--accent); }
+    .solve-button { min-width: 142px; height: 54px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 17px; border: 1px solid var(--accent); background: var(--accent); color: #fff; font: 800 11px/1 var(--mono); letter-spacing: .1em; }
+    .solve-button:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+    .solve-button:disabled, .add-node-button:disabled { opacity: .6; cursor: wait; }
+    .solve-arrow { font-size: 18px; line-height: 1; }
+    .toast { position: fixed; z-index: 20; bottom: 91px; right: 24px; max-width: min(420px, calc(100vw - 48px)); padding: 10px 13px; border: 1px solid var(--ink); background: var(--ink); color: #fff; box-shadow: var(--shadow); font: 11px/1.5 var(--mono); }
+    .toast[hidden] { display: none; }
+    .toast.error { background: var(--accent-dark); border-color: var(--accent-dark); }
+
+    @media (min-width: 1500px) {
+      .editor-panel { padding-left: 32px; padding-right: 32px; }
+      .node-card { flex-basis: 330px; width: 330px; }
+    }
+    @media (max-width: 760px) {
+      body { overflow: auto; }
+      .app-shell { min-height: 700px; height: 100dvh; grid-template-rows: minmax(300px, 39%) minmax(320px, 1fr); }
+      .editor-panel { padding: 12px 12px 9px; }
+      .masthead { margin-bottom: 10px; }
+      .masthead-note { display: none; }
+      .node-card { flex-basis: 292px; width: 292px; }
+      .graph-topline { top: 10px; left: 12px; right: 12px; }
+      .graph-legend { gap: 8px; font-size: 8px; }
+      .solution-card { left: 12px; top: 49px; }
+      .graph-footer { left: 12px; bottom: 12px; max-width: 50%; }
+      .floating-actions { right: 12px; bottom: 12px; gap: 6px; }
+      .add-node-button, .solve-button { height: 48px; }
+      .add-node-button { width: 48px; }
+      .solve-button { min-width: 122px; padding: 0 12px; }
+      .toast { bottom: 70px; right: 12px; }
+    }
+    @media (max-height: 650px) and (min-width: 761px) {
+      .app-shell { grid-template-rows: minmax(235px, 38%) minmax(0, 1fr); }
+      .editor-panel { padding-top: 10px; padding-bottom: 7px; }
+      .masthead { margin-bottom: 7px; min-height: 36px; }
+      .node-card { padding: 7px 9px; gap: 6px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <section class="editor-panel" aria-labelledby="pageTitle">
+      <header class="masthead">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">D.</div>
+          <div class="brand-copy">
+            <p class="eyebrow">Graph Lab / 001</p>
+            <h1 id="pageTitle">Shortest Path <span style="font-weight:400;color:#77776f">— Dijkstra</span></h1>
+          </div>
+        </div>
+        <p class="masthead-note">DIRECTED WEIGHTED GRAPH<br>NON-NEGATIVE WEIGHTS</p>
+      </header>
+      <div class="editor-meta">
+        <h2 class="section-title">01 / Define nodes &amp; connections</h2>
+        <span class="node-count" id="nodeCount">02 NODES</span>
+      </div>
+      <div class="node-scroller" id="nodeCards" aria-label="Node editor" aria-live="polite"></div>
+    </section>
+
+    <section class="graph-panel" aria-label="Graph visualization">
+      <div class="graph-topline">
+        <div class="graph-label">02 / Graph preview</div>
+        <div class="graph-legend" aria-label="Legend">
+          <span class="legend-item"><i class="legend-dot" aria-hidden="true"></i>START</span>
+          <span class="legend-item"><i class="legend-dot finish" aria-hidden="true"></i>DESTINATION</span>
+        </div>
+      </div>
+      <svg id="graphSvg" role="img" aria-label="Preview of the configured weighted graph" preserveAspectRatio="xMidYMid meet">
+        <desc>Connections and weights appear here as they are configured above. The algorithm runs only when Solve is pressed.</desc>
+      </svg>
+      <aside class="solution-card" id="solutionCard" aria-live="polite" hidden>
+        <p class="solution-label">03 / Dijkstra result</p>
+        <p class="solution-value" id="solutionValue"></p>
+        <p class="solution-path" id="solutionPath"></p>
+      </aside>
+      <div class="graph-footer">PREVIEW ONLY · SOLVE TO CALCULATE THE SHORTEST PATH</div>
+    </section>
+  </main>
+
+  <div class="floating-actions" aria-label="Graph actions">
+    <button type="button" class="add-node-button" id="addNodeButton" aria-label="Add node" title="Add node">+</button>
+    <button type="button" class="solve-button" id="solveButton"><span>SOLVE</span><span class="solve-arrow" aria-hidden="true">↗</span></button>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const nodeCards = document.getElementById('nodeCards');
+      const nodeCount = document.getElementById('nodeCount');
+      const graphSvg = document.getElementById('graphSvg');
+      const solutionCard = document.getElementById('solutionCard');
+      const solutionValue = document.getElementById('solutionValue');
+      const solutionPath = document.getElementById('solutionPath');
+      const toast = document.getElementById('toast');
+      const addNodeButton = document.getElementById('addNodeButton');
+      const solveButton = document.getElementById('solveButton');
+      let appState = { nodes: [], solution: null };
+      let toastTimer = null;
+
+      const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[char]);
+      const getNode = id => appState.nodes.find(node => node.id === id);
+      const nodeName = id => getNode(id)?.name?.trim() || 'SIN NOMBRE';
+      const roleLabel = role => role === 'start' ? 'START' : role === 'finish' ? 'DESTINATION' : 'NODE';
+
+      function showToast(message, isError = true) {
+        window.clearTimeout(toastTimer);
+        toast.textContent = message;
+        toast.classList.toggle('error', isError);
+        toast.hidden = false;
+        toastTimer = window.setTimeout(() => { toast.hidden = true; }, 4200);
+      }
+
+      async function api(url, options = {}) {
+        try {
+          const response = await fetch(url, {
+            ...options,
+            headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+            cache: 'no-store',
+            credentials: 'same-origin'
+          });
+          const payload = await response.json();
+          if (payload.state) {
+            appState = payload.state;
+            renderAll();
+          }
+          if (!response.ok) {
+            showToast(payload.error || 'The request could not be completed.');
+            return null;
+          }
+          return payload;
+        } catch (error) {
+          showToast('Could not reach the Flask server. Check the connection and retry.');
+          return null;
+        }
+      }
+
+      async function loadState() {
+        const payload = await api('/api/state');
+        if (!payload) return;
+        appState = payload.state;
+        renderAll();
+      }
+
+      function renderCards() {
+        nodeCount.textContent = `${String(appState.nodes.length).padStart(2, '0')} NODES`;
+        nodeCards.innerHTML = appState.nodes.map((node, index) => {
+          const cardClass = node.role === 'start' ? ' is-start' : node.role === 'finish' ? ' is-finish' : '';
+          const outgoing = node.edges.map(edge => `
+            <span class="connection-chip">
+              <span>${escapeHTML(nodeName(edge.to))}</span>
+              <strong>${escapeHTML(edge.weight)}</strong>
+              <button type="button" aria-label="Remove connection to ${escapeHTML(nodeName(edge.to))}" title="Remove connection" data-action="remove-edge" data-node-id="${escapeHTML(node.id)}" data-target-id="${escapeHTML(edge.to)}">×</button>
+            </span>`).join('');
+          const targetOptions = appState.nodes.filter(other => other.id !== node.id).map(other =>
+            `<option value="${escapeHTML(other.id)}">${escapeHTML(other.name.trim() || '— unnamed node —')}</option>`
+          ).join('');
+          const removeButton = appState.nodes.length > 2
+            ? `<button type="button" class="icon-button" aria-label="Delete node ${escapeHTML(node.name)}" title="Delete node" data-action="delete-node" data-node-id="${escapeHTML(node.id)}">×</button>`
+            : '<span aria-hidden="true" style="width:26px;height:26px"></span>';
+          return `
+            <article class="node-card${cardClass}" data-card-id="${escapeHTML(node.id)}">
+              <div class="node-card-head">
+                <div class="node-card-title">
+                  <span class="node-index">${String(index + 1).padStart(2, '0')}</span>
+                  <span class="node-name-heading">${escapeHTML(node.name.trim() || 'UNNAMED NODE')}</span>
+                </div>
+                ${removeButton}
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label for="name-${escapeHTML(node.id)}">Node name</label>
+                  <input id="name-${escapeHTML(node.id)}" name="name" type="text" maxlength="24" autocomplete="off" value="${escapeHTML(node.name)}" placeholder="e.g. A" data-action="update-name" data-node-id="${escapeHTML(node.id)}">
+                </div>
+                <div class="field">
+                  <label for="role-${escapeHTML(node.id)}">Role</label>
+                  <select id="role-${escapeHTML(node.id)}" data-action="update-role" data-node-id="${escapeHTML(node.id)}">
+                    <option value="" ${node.role === '' ? 'selected' : ''}>Regular</option>
+                    <option value="start" ${node.role === 'start' ? 'selected' : ''}>Start</option>
+                    <option value="finish" ${node.role === 'finish' ? 'selected' : ''}>Destination</option>
+                  </select>
+                </div>
+              </div>
+              <div class="connections">
+                <div class="connections-head">
+                  <span class="mini-label">Outgoing connections</span>
+                  <span class="mini-label">${String(node.edges.length).padStart(2, '0')}</span>
+                </div>
+                <div class="connection-list">${outgoing || '<span class="empty-edges">NO CONNECTIONS YET</span>'}</div>
+              </div>
+              <form class="edge-form" data-action="add-edge-form" data-node-id="${escapeHTML(node.id)}">
+                <select name="to" aria-label="Destination node" required>${targetOptions}</select>
+                <input name="weight" type="number" min="0" step="any" value="1" aria-label="Connection weight" required>
+                <button type="submit" class="edge-add" aria-label="Add connection" title="Add connection">+</button>
+              </form>
+            </article>`;
+        }).join('');
+      }
+
+      function nodeBoxSize(node) {
+        const width = Math.max(92, Math.min(170, (node.name.trim().length * 8) + 32));
+        return { width, height: 48 };
+      }
+
+      function edgePoint(from, to, box, reverse = false) {
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const safeDx = Math.abs(dx) < 0.001 ? 0.001 : dx;
+        const safeDy = Math.abs(dy) < 0.001 ? 0.001 : dy;
+        const factor = 1 / Math.max(Math.abs(safeDx) / (box.width / 2), Math.abs(safeDy) / (box.height / 2));
+        const sign = reverse ? -1 : 1;
+        return { x: from.x + dx * factor * sign, y: from.y + dy * factor * sign };
+      }
+
+      function renderGraph() {
+        const visibleNodes = appState.nodes.filter(node => node.name.trim());
+        const width = Math.max(graphSvg.parentElement.clientWidth, 480);
+        const height = Math.max(graphSvg.parentElement.clientHeight, 300);
+        const columns = Math.min(5, Math.max(2, Math.floor((width - 100) / 190)));
+        const rows = Math.max(1, Math.ceil(visibleNodes.length / columns));
+        const virtualWidth = Math.max(width, columns * 190 + 90);
+        const virtualHeight = Math.max(height, rows * 135 + 90);
+        graphSvg.setAttribute('viewBox', `0 0 ${virtualWidth} ${virtualHeight}`);
+
+        const positions = new Map();
+        visibleNodes.forEach((node, index) => {
+          const col = index % columns;
+          const row = Math.floor(index / columns);
+          positions.set(node.id, {
+            x: virtualWidth * (col + 1) / (columns + 1),
+            y: virtualHeight * (row + 1) / (rows + 1),
+            box: nodeBoxSize(node),
+            node
+          });
+        });
+
+        const solutionEdges = new Set();
+        const solution = appState.solution;
+        if (solution?.reachable && Array.isArray(solution.pathIds)) {
+          for (let i = 0; i < solution.pathIds.length - 1; i++) {
+            solutionEdges.add(`${solution.pathIds[i]}->${solution.pathIds[i + 1]}`);
+          }
+        }
+
+        const edges = [];
+        visibleNodes.forEach(source => {
+          const from = positions.get(source.id);
+          source.edges.forEach(edge => {
+            const destination = positions.get(edge.to);
+            if (!from || !destination) return;
+            const to = destination;
+            const isReversePair = to.node.edges.some(item => item.to === source.id);
+            const curve = isReversePair ? (source.id < to.node.id ? 24 : -24) : 0;
+            const sx = to.x - from.x;
+            const sy = to.y - from.y;
+            const norm = Math.hypot(sx, sy) || 1;
+            const nx = -sy / norm;
+            const ny = sx / norm;
+            const startFactor = 1 / Math.max(Math.abs(sx) / (from.box.width / 2), Math.abs(sy) / (from.box.height / 2));
+            const endFactor = 1 / Math.max(Math.abs(sx) / (to.box.width / 2), Math.abs(sy) / (to.box.height / 2));
+            const start = { x: from.x + sx * startFactor, y: from.y + sy * startFactor };
+            const end = { x: to.x - sx * endFactor, y: to.y - sy * endFactor };
+            const control = { x: (start.x + end.x) / 2 + nx * curve, y: (start.y + end.y) / 2 + ny * curve };
+            const label = { x: (start.x + 2 * control.x + end.x) / 4, y: (start.y + 2 * control.y + end.y) / 4 };
+            const key = `${source.id}->${edge.to}`;
+            const isSolution = solutionEdges.has(key);
+            edges.push(`
+              <g class="graph-edge">
+                <path class="edge-path${isSolution ? ' is-solution' : ''}" d="M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}" />
+                <rect class="edge-label-bg" x="${label.x - 18}" y="${label.y - 12}" width="36" height="24" rx="0" />
+                <text class="edge-label" x="${label.x}" y="${label.y}">${escapeHTML(edge.weight)}</text>
+              </g>`);
+          });
+        });
+
+        const nodeMarkup = visibleNodes.map(node => {
+          const position = positions.get(node.id);
+          const { x, y, box } = position;
+          const classes = ['graph-node', node.role || 'regular'];
+          if (solution?.reachable && solution.pathIds?.includes(node.id)) classes.push('solution');
+          const roleText = node.role === 'start' ? 'START' : node.role === 'finish' ? 'DESTINATION' : '';
+          return `
+            <g class="${classes.join(' ')}" transform="translate(${x}, ${y})">
+              <title>${escapeHTML(node.name)}${roleText ? ` — ${roleText}` : ''}</title>
+              <rect class="graph-node-rect" x="${-box.width / 2}" y="${-box.height / 2}" width="${box.width}" height="${box.height}" rx="0" />
+              <text class="graph-node-text" x="0" y="${roleText ? -3 : 0}">${escapeHTML(node.name.trim().length > 20 ? node.name.trim().slice(0, 19) + '…' : node.name.trim())}</text>
+              ${roleText ? `<text class="graph-node-role" x="0" y="15">${roleText}</text>` : ''}
+            </g>`;
+        }).join('');
+
+        graphSvg.innerHTML = `
+          <defs>
+            <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L6,3 z" fill="#96968f"></path>
+            </marker>
+            <marker id="arrow-solution" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L6,3 z" fill="#e33c2f"></path>
+            </marker>
+          </defs>
+          ${edges.join('')}
+          ${nodeMarkup}
+          ${visibleNodes.length ? '' : `<text x="${virtualWidth / 2}" y="${virtualHeight / 2}" text-anchor="middle" fill="#77776f" font-family="ui-monospace,monospace" font-size="13">ADD A NAMED NODE TO BEGIN</text>`}
+        `;
+        graphSvg.setAttribute('aria-label', `Graph preview with ${visibleNodes.length} named nodes and ${edges.length} directed connections`);
+      }
+
+      function renderSolution() {
+        const solution = appState.solution;
+        solutionCard.hidden = !solution;
+        if (!solution) return;
+        if (solution.reachable) {
+          solutionValue.textContent = `Total cost: ${solution.cost}`;
+          solutionPath.innerHTML = `<strong>SHORTEST PATH</strong><br>${solution.pathNames.map(escapeHTML).join(' → ')}`;
+        } else {
+          solutionValue.textContent = 'No route found';
+          solutionPath.textContent = solution.message || 'No path connects the selected start and destination.';
+        }
+      }
+
+      function renderAll() {
+        renderCards();
+        renderGraph();
+        renderSolution();
+      }
+
+      nodeCards.addEventListener('change', async event => {
+        const target = event.target;
+        const action = target.dataset.action;
+        const nodeId = target.dataset.nodeId;
+        if (!action || !nodeId) return;
+        if (action === 'update-name') {
+          await api(`/api/nodes/${encodeURIComponent(nodeId)}`, {
+            method: 'PATCH', body: JSON.stringify({ name: target.value })
+          });
+        } else if (action === 'update-role') {
+          await api(`/api/nodes/${encodeURIComponent(nodeId)}`, {
+            method: 'PATCH', body: JSON.stringify({ role: target.value })
+          });
+        }
+      });
+
+      nodeCards.addEventListener('submit', async event => {
+        const form = event.target.closest('form[data-action="add-edge-form"]');
+        if (!form) return;
+        event.preventDefault();
+        const nodeId = form.dataset.nodeId;
+        const destination = form.elements.to.value;
+        const weightText = form.elements.weight.value;
+        if (weightText === '' || !Number.isFinite(Number(weightText)) || Number(weightText) < 0) {
+          showToast('Enter a finite weight greater than or equal to zero.');
+          return;
+        }
+        await api(`/api/nodes/${encodeURIComponent(nodeId)}/edges`, {
+          method: 'POST', body: JSON.stringify({ to: destination, weight: Number(weightText) })
+        });
+      });
+
+      nodeCards.addEventListener('click', async event => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const { action, nodeId, targetId } = button.dataset;
+        if (action === 'delete-node') {
+          if (!window.confirm(`Delete node “${nodeName(nodeId)}” and all its connections?`)) return;
+          await api(`/api/nodes/${encodeURIComponent(nodeId)}`, { method: 'DELETE' });
+        } else if (action === 'remove-edge') {
+          await api(`/api/nodes/${encodeURIComponent(nodeId)}/edges/${encodeURIComponent(targetId)}`, { method: 'DELETE' });
+        }
+      });
+
+      addNodeButton.addEventListener('click', async () => {
+        addNodeButton.disabled = true;
+        const previousCount = appState.nodes.length;
+        const payload = await api('/api/nodes', { method: 'POST', body: '{}' });
+        addNodeButton.disabled = false;
+        if (payload) {
+          const newest = appState.nodes[appState.nodes.length - 1];
+          nodeCards.scrollTo({ left: nodeCards.scrollWidth, behavior: 'smooth' });
+          window.setTimeout(() => document.getElementById(`name-${newest.id}`)?.focus(), 120);
+          if (appState.nodes.length > previousCount) showToast(`Node ${newest.name} added.`, false);
+        }
+      });
+
+      solveButton.addEventListener('click', async () => {
+        solveButton.disabled = true;
+        solveButton.querySelector('span:first-child').textContent = 'SOLVING…';
+        const payload = await api('/api/solve', { method: 'POST', body: '{}' });
+        solveButton.disabled = false;
+        solveButton.querySelector('span:first-child').textContent = 'SOLVE';
+        if (payload?.state?.solution?.reachable) showToast('Shortest path calculated.', false);
+        else if (payload?.state?.solution && !payload.state.solution.reachable) showToast(payload.state.solution.message, true);
+      });
+
+      if ('ResizeObserver' in window) {
+        new ResizeObserver(() => renderGraph()).observe(graphSvg.parentElement);
+      } else {
+        window.addEventListener('resize', renderGraph);
+      }
+      loadState();
+    })();
+  </script>
+</body>
+</html>
