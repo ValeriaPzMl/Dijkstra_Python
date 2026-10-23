@@ -99,7 +99,9 @@
 This project is a web application that lets the user build a directed,
 weighted graph visually and find the shortest path between a \emph{start}
 node and a \emph{destination} node using the \textbf{bidirectional Dijkstra}
-algorithm.
+algorithm. Before showing the result, the application animates the search
+step by step, so the user can see how both searches advance and where they
+meet.
 
 \begin{itemize}[nosep]
   \item \textbf{Algorithm:} \code{dijkstra.py}, written in Python using only
@@ -127,8 +129,9 @@ browser edits a lightweight JSON representation of the graph (nodes, roles,
 levels and connections). When the user presses \textbf{SOLVE},
 \code{app.py} \textbf{rebuilds that graph as \code{Grafo}/\code{Nodo}
 objects} so it is compatible with the algorithm, calls \code{resolver()},
-and translates the result (a list of \code{Nodo} objects and a cost) back
-into JSON so the interface can highlight the path. Therefore \code{app.py}
+and translates the result (a list of \code{Nodo} objects, a cost and the
+steps recorded during the search) back into JSON so the interface can
+animate the search and highlight the path. Therefore \code{app.py}
 acts as the adapter between the graphical part and the algorithm, while the
 shortest-path logic lives only in \code{dijkstra.py}.
 
@@ -136,7 +139,7 @@ shortest-path logic lives only in \code{dijkstra.py}.
 \small
 \texttt{Browser (app.js)} $\xrightarrow{\text{JSON}}$
 \texttt{app.py (Flask)} $\xrightarrow{\texttt{Grafo / Nodo}}$
-\texttt{dijkstra.py} $\xrightarrow{\texttt{(path, cost)}}$
+\texttt{dijkstra.py} $\xrightarrow{\texttt{(path, cost, steps)}}$
 \texttt{app.py} $\xrightarrow{\text{JSON}}$ \texttt{Browser}
 \end{center}
 
@@ -273,6 +276,31 @@ the distance, so two small ``circles'' explore far fewer nodes than one big
 circle. If there is no path, the queues run out without the searches meeting
 and the method returns \code{(None, inf)}.
 
+\subsection{Animation of the search}
+
+\code{dijkstra\_bidireccional} accepts an optional list \code{pasos}. When it
+is given, \code{\_expandir} appends one entry for every step of the algorithm;
+the logic of the search does not change.
+
+\begin{center}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2cm}LL}
+\toprule
+\textbf{Step} & \textbf{When it is recorded} & \textbf{What the animation shows} \\
+\midrule
+\code{visitar}   & A search pops the node with the lowest weight and marks it visited. & The node becomes the current node (thick border) and is filled with the color of its search. \\
+\code{relajar}   & A search calculates the weight of a neighbor through an edge. & The edge is highlighted and, if the weight improved, the node label shows it ($\rightarrow$ from the start, $\leftarrow$ to the destination). \\
+\code{encuentro} & The two searches touch at a node and find a cheaper complete path. & That node is marked in purple as the best meeting point so far. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\code{app.py} translates the node names of each step to ids and sends the
+list together with the solution. When \textbf{SOLVE} is pressed,
+\code{app.js} plays the steps one by one (blue = forward search, orange =
+backward search, purple = meeting point) and then shows the shortest path and
+its cost. Larger graphs play faster, and the \textbf{Skip animation} button
+jumps directly to the result.
+
 % ===============================================================
 \section{Data Structures, Classes, Methods and Attributes}
 % ===============================================================
@@ -345,9 +373,9 @@ The application never creates it directly; it is created inside
 \code{agregar\_nodo(nodo)} & Adds the node if it is not already in the graph and returns it. \\
 \code{agregar\_arista(origen, destino, peso)} & Adds both nodes if needed, creates the \code{Arista}, appends it to \code{origen.aristas} and to \code{destino.entrantes}, and returns it. \\
 \code{set\_inicio(nodo)}, \code{set\_fin(nodo)} & Set the start / destination node; raise \code{ValueError} if the node does not belong to the graph. \\
-\code{resolver()} & Checks that start and destination are set and returns \code{dijkstra\_bidireccional(inicio, fin)}, i.e.\ \code{(path, cost)}. \\
-\code{dijkstra\_bidireccional(}\allowbreak\code{origen, destino)} & Runs the bidirectional search (Section 2.2). Returns \code{(list[Nodo], cost)} or \code{(None, inf)}. \\
-\code{\_expandir(pq, dist, padre, visitados, dist\_otro, adelante, mejor, encuentro, contador)} & One step of one search: pops the closest node, marks it visited, relaxes its edges (outgoing if \code{adelante} is \code{True}, incoming otherwise) and updates \code{mejor}/\code{encuentro} when it touches the other search. Returns the new \code{(mejor, encuentro)}. \\
+\code{resolver(pasos=None)} & Checks that start and destination are set and returns \code{dijkstra\_bidireccional(inicio, fin, pasos)}, i.e.\ \code{(path, cost)}. \\
+\code{dijkstra\_bidireccional(}\allowbreak\code{origen, destino, pasos=None)} & Runs the bidirectional search (Section 2.2). Returns \code{(list[Nodo], cost)} or \code{(None, inf)}. If \code{pasos} is a list, every step is recorded in it (Section 2.3). \\
+\code{\_expandir(pq, dist, padre, visitados, dist\_otro, adelante, mejor, encuentro, contador, pasos=None)} & One step of one search: pops the closest node, marks it visited, relaxes its edges (outgoing if \code{adelante} is \code{True}, incoming otherwise) and updates \code{mejor}/\code{encuentro} when it touches the other search. Records those steps in \code{pasos} if given. Returns the new \code{(mejor, encuentro)}. \\
 \bottomrule
 \end{tabularx}
 
@@ -384,7 +412,8 @@ that can be sent as JSON.
 state & \code{\{"nodes": [...], "max\_level": int, "solution": dict | None\}} \\
 node & \code{\{"id", "name", "role", "level", "edges"\}}. \code{role} is \code{"start"}, \code{"finish"} or \code{""}; \code{level} is the column where the node is drawn (start = 0, destination = last). \\
 edge & \code{\{"to": node\_id, "weight": number\}}, stored in the source node. \\
-solution & \code{\{"reachable", "pathIds", "pathNames", "cost", "message"\}}. \\
+solution & \code{\{"reachable", "pathIds", "pathNames", "cost", "message", "steps"\}}. \\
+step & \code{\{"type", "node", ...\}}: \code{visit} (with \code{search}, \code{dist}), \code{relax} (with \code{search}, \code{edge}, \code{dist}, \code{improved}) or \code{meet} (with \code{cost}). \\
 \bottomrule
 \end{tabularx}
 
@@ -404,6 +433,7 @@ solution & \code{\{"reachable", "pathIds", "pathNames", "cost", "message"\}}. \\
 \code{\_parse\_weight(value)} & Validates that a weight is a finite number $\ge 0$. \\
 \code{\_next\_name(state)} & Next free name: \code{A}\ldots\code{Z}, then \code{N1}, \code{N2}, \ldots \\
 \code{\_reassign\_endpoint\_}\allowbreak\code{if\_needed()} & If the start or destination is deleted, promotes another node so both always exist. \\
+\code{\_step\_json(step, id\_by\_name)} & Translates one step recorded by \code{dijkstra.py} (node names) to the JSON step used by the animation (node and edge ids). \\
 \bottomrule
 \end{tabularx}
 
@@ -421,7 +451,7 @@ solution & \code{\{"reachable", "pathIds", "pathNames", "cost", "message"\}}. \\
 \code{POST /api/nodes/<id>/level} & Moves a regular node one level left or right. \\
 \code{POST /api/nodes/<id>/edges} & Adds (or updates) a connection \code{\{to, weight\}}. \\
 \code{DELETE /api/nodes/<id>/edges/<to>} & Removes a connection. \\
-\code{POST /api/solve} & Builds the \code{Grafo} and runs the algorithm. \\
+\code{POST /api/solve} & Builds the \code{Grafo}, runs the algorithm and returns the path, its cost and the recorded steps. \\
 \code{GET /health} & Health check used by Render. \\
 \bottomrule
 \end{tabularx}
@@ -446,11 +476,13 @@ for node in nodes:
                              _parse_weight(edge["weight"]))
 graph.set_inicio(node_objects[starts[0]["id"]])
 graph.set_fin(node_objects[finishes[0]["id"]])
-path, cost = graph.resolver()
+steps = []
+path, cost = graph.resolver(steps)
 \end{lstlisting}
 
 The resulting list of \code{Nodo} objects is converted back to names and ids
-(\code{pathNames}, \code{pathIds}) and stored in \code{state["solution"]}.
+(\code{pathNames}, \code{pathIds}), the recorded steps are converted with
+\code{\_step\_json}, and both are stored in \code{state["solution"]}.
 
 \subsection{\code{static/app.js} --- frontend}
 
@@ -462,10 +494,13 @@ The resulting list of \code{Nodo} objects is converted back to names and ids
   \item \code{card(node)}: builds each node card (name, role, connections and
         the form to add connections).
   \item \code{drawGraph()}: draws the graph with Cytoscape.js, placing each
-        node in the column of its \code{level}. After solving, the path is
+        node in the column of its \code{level}. When the animation ends, the path is
         drawn with thick lines and the rest of the graph is faded.
-  \item \code{panels()}: shows the level-move panel of the selected node and
-        the result card (total cost and path).
+  \item \code{panels()}: shows the level-move panel of the selected node, the
+        animation panel and the result card (total cost and path).
+  \item \code{startAnim(steps)}, \code{step()}, \code{finishAnim()}: play the
+        steps of the solution one by one on the drawing (Section 2.3). Any
+        change to the graph stops the animation.
 \end{itemize}
 
 % ===============================================================
@@ -500,7 +535,9 @@ drawing (bottom) and the \textbf{SOLVE} button (bottom right).
   \item \textbf{Reorder the drawing (optional).} Click a regular node in the
         graph and use \textbf{$\leftarrow$ Left / Right $\rightarrow$} to move
         it to another column. This only changes the drawing, not the result.
-  \item \textbf{Solve.} Press \textbf{SOLVE}. The result card shows the
+  \item \textbf{Solve.} Press \textbf{SOLVE}. First the animation shows the
+        bidirectional search step by step (press \textbf{Skip animation} to
+        jump to the end). Then the result card shows the
         \textbf{total cost} and the \textbf{path} (e.g.\
         \code{A $\rightarrow$ C $\rightarrow$ D $\rightarrow$ B}) and the
         graph highlights it. If no path exists, it shows ``No route found''.
@@ -591,6 +628,7 @@ The following screenshots show the program running: the creation of the
 graph in the node cards, the drawing generated from them and the result of
 the algorithm after pressing \textbf{SOLVE}. The shortest path is drawn with
 thick lines and the nodes and edges that are not part of it are faded.
+Figure~\ref{fig:anim} shows the animation that plays before that result.
 
 \begin{figure}[H]
   \centering
@@ -624,6 +662,19 @@ thick lines and the nodes and edges that are not part of it are faded.
   $\rightarrow$ E} (1309) or any route through \code{D} (7423 for the
   first edge alone).}
   \label{fig:exec3}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{animation.png}
+  \caption{Animation of the bidirectional search (step 12 of 15) on a graph
+  with 6 nodes whose shortest path is \code{A $\rightarrow$ C $\rightarrow$
+  D $\rightarrow$ E $\rightarrow$ B} (cost 11). The forward search (blue) has visited
+  \code{A} and \code{C}; the backward search (orange) has visited \code{B}
+  and \code{E}. Each label shows the current weight of the node from the
+  start ($\rightarrow$) or to the destination ($\leftarrow$), and \code{D}
+  is the best meeting point found so far.}
+  \label{fig:anim}
 \end{figure}
 
 % ===============================================================

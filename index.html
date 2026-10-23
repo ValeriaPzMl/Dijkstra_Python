@@ -20,6 +20,12 @@
       <button type="button" id="moveRightButton">Right →</button>
     </aside>
     <aside id="solutionCard" hidden><h3 id="solutionValue"></h3><p id="solutionPath"></p></aside>
+    <aside id="animPanel" hidden>
+      <h3 id="animStep"></h3><p id="animText"></p>
+      <p class="legend"><span class="fwd">Forward search</span><span class="bwd">Backward search</span><span class="meet">Meeting point</span></p>
+      <p><small>→ distance from start · ← distance to destination</small></p>
+      <button type="button" id="skipButton">Skip animation ⏭</button>
+    </aside>
   </section>
   <button type="button" id="solveButton"><span id="solveLabel">SOLVE</span> ↗</button>
   <div id="toast" role="status" hidden></div>

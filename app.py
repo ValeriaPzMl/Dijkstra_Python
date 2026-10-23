@@ -139,6 +139,24 @@ def _reassign_endpoint_if_needed(state, deleted_role):
             candidate["role"] = "finish"
 
 
+def _step_json(step, id_by_name):
+    """Translates one step recorded by dijkstra.py (node names) to node/edge ids."""
+    kind = {"visitar": "visit", "relajar": "relax", "encuentro": "meet"}[step["tipo"]]
+    result = {"type": kind, "node": id_by_name[step["nodo"]]}
+    if kind == "visit":
+        result.update(search=step["busqueda"], dist=step["dist"])
+    elif kind == "relax":
+        result.update(
+            search=step["busqueda"],
+            edge=f'{id_by_name[step["origen"]]}>{id_by_name[step["destino"]]}',
+            dist=step["dist"],
+            improved=step["mejora"],
+        )
+    else:
+        result["cost"] = step["costo"]
+    return result
+
+
 @app.get("/")
 def index():
     return send_from_directory(BASE_DIR, "index.html")
@@ -323,8 +341,8 @@ def solve():
             return _error("Choose exactly one start node and one destination node.", 400, state)
 
         try:
-            # The algorithm graph is instantiated only on SOLVE. The original
-            # dijkstra.py implementation is imported and called unchanged.
+            # The algorithm graph is instantiated only on SOLVE. dijkstra.py
+            # records every step in `steps` so the frontend can animate it.
             graph = Grafo()
             node_objects = {node["id"]: Nodo(node["name"].strip()) for node in nodes}
             for node in nodes:
@@ -341,17 +359,20 @@ def solve():
                     )
             graph.set_inicio(node_objects[starts[0]["id"]])
             graph.set_fin(node_objects[finishes[0]["id"]])
-            path, cost = graph.resolver()
+            steps = []
+            path, cost = graph.resolver(steps)
         except (ValueError, KeyError) as exc:
             return _error(str(exc), 400, state)
 
+        id_by_name = {node["name"].strip(): node["id"] for node in nodes}
+        steps = [_step_json(step, id_by_name) for step in steps]
         if path is None or not isfinite(cost):
             state["solution"] = {
                 "reachable": False,
                 "message": "No path exists between the start and destination.",
+                "steps": steps,
             }
         else:
-            id_by_name = {node["name"].strip(): node["id"] for node in nodes}
             path_names = [item.nombre for item in path]
             state["solution"] = {
                 "reachable": True,
@@ -359,6 +380,7 @@ def solve():
                 "pathNames": path_names,
                 "cost": cost,
                 "message": "Shortest path found.",
+                "steps": steps,
             }
         return _state_response(state)
 

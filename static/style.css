@@ -1,4 +1,5 @@
 :root { --black: #000; --white: #fff; --start: #1b8a3a; --end: #d62828;
+  --fwd: #1f6feb; --fwd-bg: #dbe9ff; --bwd: #e8590c; --bwd-bg: #ffe3d1; --meet: #8e44ad; --meet-bg: #eedcf7;
   --font: system-ui, sans-serif; --title: 20px; --sub: 14px; --text: 12px; }
 * { box-sizing: border-box; font-family: var(--font); font-size: var(--text); }
 [hidden] { display: none !important; }
@@ -34,6 +35,13 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 aside { position: absolute; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; border: 2px solid var(--black); background: var(--white); }
 #levelMovePanel { top: 12px; right: 12px; }
 #solutionCard { top: 12px; left: 12px; max-width: min(320px, 60%); flex-direction: column; align-items: flex-start; }
+#animPanel { top: 12px; left: 12px; max-width: min(380px, 70%); flex-direction: column; align-items: flex-start; }
+#graphPanel.animating #graph { left: 400px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px; }
+.legend span { padding: 2px 6px; border: 2px solid; }
+.legend .fwd { background: var(--fwd-bg); border-color: var(--fwd); }
+.legend .bwd { background: var(--bwd-bg); border-color: var(--bwd); }
+.legend .meet { background: var(--meet-bg); border-color: var(--meet); }
 
 /* solve button + toast */
 #solveButton { position: fixed; right: 16px; bottom: 16px; z-index: 5; height: 56px; padding: 0 24px; font-size: var(--sub); background: var(--black); color: var(--white); }
@@ -43,4 +51,6 @@ aside { position: absolute; z-index: 1; display: flex; flex-wrap: wrap; align-it
 @media (max-width: 700px) {
   body { grid-template-rows: auto 50% 1fr; }
   article { flex-basis: 260px; }
+  #animPanel { max-width: none; right: 12px; }
+  #graphPanel.animating #graph { left: 0; top: 210px; }
 }
