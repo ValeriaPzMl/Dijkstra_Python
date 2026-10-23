@@ -51,7 +51,8 @@ class Grafo:
             raise ValueError(f"{nodo} no está en el grafo")
         self.fin = nodo
 
-    def dijkstra_bidireccional(self, origen, destino):
+    def dijkstra_bidireccional(self, origen, destino, pasos=None):
+        # pasos: lista opcional donde se registra cada paso (para la animación)
         if origen is destino:
             return [origen], 0
 
@@ -77,10 +78,10 @@ class Grafo:
 
             if pq_f[0][0] <= pq_b[0][0]:
                 mejor, encuentro = self._expandir(pq_f, dist_f, padre_f, vis_f,
-                                                  dist_b, True, mejor, encuentro, contador)
+                                                  dist_b, True, mejor, encuentro, contador, pasos)
             else:
                 mejor, encuentro = self._expandir(pq_b, dist_b, padre_b, vis_b,
-                                                  dist_f, False, mejor, encuentro, contador)
+                                                  dist_f, False, mejor, encuentro, contador, pasos)
 
         if encuentro is None:
             return None, inf
@@ -101,32 +102,47 @@ class Grafo:
 
         return camino, mejor
 
-    def resolver(self):
+    def resolver(self, pasos=None):
         if self.inicio is None or self.fin is None:
             raise ValueError("Primero define el nodo de inicio y el de fin")
-        return self.dijkstra_bidireccional(self.inicio, self.fin)
+        return self.dijkstra_bidireccional(self.inicio, self.fin, pasos)
     def _expandir(self, pq, dist, padre, visitados, dist_otro, adelante,
-                  mejor, encuentro, contador):
+                  mejor, encuentro, contador, pasos=None):
+        busqueda = "f" if adelante else "b"
         d, _, nodo = heapq.heappop(pq)
         if nodo in visitados:
             return mejor, encuentro
         visitados.add(nodo)
+        if pasos is not None:   # nodo con menor peso → pasa a visitado
+            pasos.append({"tipo": "visitar", "busqueda": busqueda,
+                          "nodo": nodo.nombre, "dist": d})
 
         aristas = nodo.aristas if adelante else nodo.entrantes
         for arista in aristas:
             vecino = arista.destino if adelante else arista.origen
             nueva = d + arista.peso
+            mejora = nueva < dist[vecino]
 
-            if nueva < dist[vecino]:
+            if mejora:
                 dist[vecino] = nueva
                 padre[vecino] = nodo
                 heapq.heappush(pq, (nueva, next(contador), vecino))
+
+            if pasos is not None:   # se calcula el peso del vecino por esta arista
+                pasos.append({"tipo": "relajar", "busqueda": busqueda,
+                              "origen": arista.origen.nombre,
+                              "destino": arista.destino.nombre,
+                              "nodo": vecino.nombre, "dist": nueva,
+                              "mejora": mejora})
 
             # ¿la otra búsqueda ya llegó a este vecino? → hay un camino completo
             total = nueva + dist_otro[vecino]
             if total < mejor:
                 mejor = total
                 encuentro = vecino
+                if pasos is not None:
+                    pasos.append({"tipo": "encuentro", "nodo": vecino.nombre,
+                                  "costo": total})
 
         return mejor, encuentro
     

@@ -101,6 +101,24 @@ If there is no path, the queues empty out without the searches ever meeting
 and the method returns `(None, inf)`. If start and destination are the same
 node it returns `([start], 0)` immediately.
 
+### 2.3 Animation of the search
+
+`dijkstra_bidireccional` accepts an optional list `pasos`. When it is given,
+`_expandir` appends one entry for every step of the algorithm (the logic of
+the search does not change):
+
+| Step (`tipo`) | When it is recorded | What the animation shows |
+|---|---|---|
+| `visitar` | A search pops the node with the lowest weight and marks it visited. | The node becomes the current node (thick border) and is filled with the color of its search. |
+| `relajar` | A search calculates the weight of a neighbor through an edge. | The edge is highlighted and, if the weight improved, the node label shows it (`→` from start, `←` to destination). |
+| `encuentro` | The two searches touch at a node and find a cheaper complete path. | That node is marked in purple as the best meeting point so far. |
+
+`app.py` translates the node names of each step to ids and sends the list
+with the solution. When **SOLVE** is pressed, `app.js` plays the steps one by
+one (blue = forward search, orange = backward search, purple = meeting point)
+and then shows the shortest path and its cost. Larger graphs play faster, and
+**Skip animation** jumps to the result.
+
 ---
 
 ## 3. Data structures, classes, methods and attributes
@@ -151,9 +169,9 @@ The app never creates it directly; it is created inside
 | `agregar_nodo(nodo)` | Adds the node if it is not already in the graph and returns it. |
 | `agregar_arista(origen, destino, peso)` | Adds both nodes if needed, creates the `Arista`, appends it to `origen.aristas` and to `destino.entrantes`, and returns it. |
 | `set_inicio(nodo)` / `set_fin(nodo)` | Set the start / destination node; raise `ValueError` if the node is not in the graph. |
-| `resolver()` | Checks that start and destination are set and returns `dijkstra_bidireccional(inicio, fin)` → `(path, cost)`. |
-| `dijkstra_bidireccional(origen, destino)` | Runs the bidirectional search described in section 2.2. Returns `(list[Nodo], cost)` or `(None, inf)`. |
-| `_expandir(pq, dist, padre, visitados, dist_otro, adelante, mejor, encuentro, contador)` | One step of one search: pops the closest node, marks it visited, relaxes its edges (outgoing if `adelante=True`, incoming otherwise) and updates `mejor`/`encuentro` when it touches the other search. Returns the new `(mejor, encuentro)`. |
+| `resolver(pasos=None)` | Checks that start and destination are set and returns `dijkstra_bidireccional(inicio, fin, pasos)` → `(path, cost)`. |
+| `dijkstra_bidireccional(origen, destino, pasos=None)` | Runs the bidirectional search described in section 2.2. Returns `(list[Nodo], cost)` or `(None, inf)`. If `pasos` is a list, every step is recorded in it (section 2.3). |
+| `_expandir(pq, dist, padre, visitados, dist_otro, adelante, mejor, encuentro, contador, pasos=None)` | One step of one search: pops the closest node, marks it visited, relaxes its edges (outgoing if `adelante=True`, incoming otherwise) and updates `mejor`/`encuentro` when it touches the other search. Records those steps in `pasos` if given. Returns the new `(mejor, encuentro)`. |
 
 #### Data structures inside `dijkstra_bidireccional`
 
@@ -181,7 +199,8 @@ Each browser session has its own graph, stored in memory:
 | **state** | `{"nodes": [...], "max_level": int, "solution": dict or None}` |
 | **node** | `{"id": str, "name": str, "role": "" / "start" / "finish", "level": int, "edges": [...]}` — `level` is the column where the node is drawn (start = 0, destination = last). |
 | **edge** | `{"to": node_id, "weight": number}` — stored in the source node. |
-| **solution** | `{"reachable": True, "pathIds": [...], "pathNames": [...], "cost": number, "message": str}` or `{"reachable": False, "message": str}`. |
+| **solution** | `{"reachable": True, "pathIds": [...], "pathNames": [...], "cost": number, "message": str, "steps": [...]}` or `{"reachable": False, "message": str, "steps": [...]}`. |
+| **step** | `{"type": "visit", "node", "search", "dist"}`, `{"type": "relax", "node", "search", "edge", "dist", "improved"}` or `{"type": "meet", "node", "cost"}`. `search` is `"f"` (forward) or `"b"` (backward); `edge` is `"<source id>><target id>"`. |
 
 #### Helper functions
 
@@ -197,6 +216,7 @@ Each browser session has its own graph, stored in memory:
 | `_parse_weight(value)` | Validates that a weight is a finite number `>= 0`. |
 | `_next_name(state)` | Next free name: `A`…`Z`, then `N1`, `N2`, … |
 | `_reassign_endpoint_if_needed(state, role)` | If the start or destination is deleted, promotes another node so both always exist. |
+| `_step_json(step, id_by_name)` | Translates one step recorded by `dijkstra.py` (node names, Spanish keys) to the JSON step used by the animation (node and edge ids). |
 
 #### HTTP endpoints
 
@@ -216,8 +236,8 @@ Each browser session has its own graph, stored in memory:
 `solve()` is where the two parts meet: it creates one `Nodo` per node
 dictionary (`node_objects`), adds them with `agregar_nodo`, creates every
 connection with `agregar_arista`, sets the endpoints with `set_inicio` /
-`set_fin`, calls `resolver()` and converts the resulting `Nodo` list back to
-ids and names.
+`set_fin`, calls `resolver(steps)` and converts the resulting `Nodo` list and
+the recorded steps back to ids and names.
 
 ### 3.3 `static/app.js` (frontend)
 
@@ -230,8 +250,11 @@ ids and names.
 - `drawGraph()`: draws the graph with Cytoscape.js, placing each node in the
   column of its `level`; after solving, the path is drawn thick and the rest
   is faded.
-- `panels()`: shows the level-move panel of the selected node and the
-  result card (total cost and path).
+- `panels()`: shows the level-move panel of the selected node, the
+  animation panel and the result card (total cost and path).
+- `startAnim(steps)`, `step()`, `finishAnim()`: play the steps of the
+  solution one by one on the drawing (section 2.3). Any change to the graph
+  stops the animation.
 
 ---
 
@@ -259,7 +282,9 @@ and the **SOLVE** button (bottom right).
 8. **Reorder the drawing (optional).** Click a regular node in the graph
    and use **← Left / Right →** to move it to another column. This only
    changes how it is drawn, not the result.
-9. **Solve.** Press **SOLVE**. The result card shows the **total cost** and
+9. **Solve.** Press **SOLVE**. First the animation shows the bidirectional
+   search step by step (press **Skip animation** to jump to the end). Then
+   the result card shows the **total cost** and
    the **path** (e.g. `A → C → D → B`), and the graph highlights the path.
    If there is no path, it shows *"No route found"*. Any later change to
    the graph clears the result.
