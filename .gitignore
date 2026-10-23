@@ -40,6 +40,12 @@ htmlcov/
 .vscode/
 .idea/
 
+# Reporte LaTeX: solo .tex y .pdf
+Reporte_Latex/*
+!Reporte_Latex/*.tex
+!Reporte_Latex/*.pdf
+!Reporte_Latex/*.png
+
 # Sistema operativo
 .DS_Store
 Thumbs.db

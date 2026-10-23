@@ -1,4 +1,4 @@
-"""Minimal Flask UI around the original, unchanged dijistra.py implementation."""
+"""Minimal Flask UI around the original, unchanged dijkstra.py implementation."""
 
 from copy import deepcopy
 from math import isfinite
@@ -9,8 +9,8 @@ import uuid
 
 from flask import Flask, jsonify, request, send_from_directory, session
 
-# The implementation is imported as supplied. Do not modify dijistra.py.
-from dijistra import Grafo, Nodo
+# The implementation is imported as supplied. Do not modify dijkstra.py.
+from dijkstra import Grafo, Nodo
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__)
@@ -324,7 +324,7 @@ def solve():
 
         try:
             # The algorithm graph is instantiated only on SOLVE. The original
-            # dijistra.py implementation is imported and called unchanged.
+            # dijkstra.py implementation is imported and called unchanged.
             graph = Grafo()
             node_objects = {node["id"]: Nodo(node["name"].strip()) for node in nodes}
             for node in nodes:

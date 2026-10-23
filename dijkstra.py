@@ -131,22 +131,24 @@ class Grafo:
         return mejor, encuentro
     
 if __name__=="__main__":
+    FILAS, COLS = 20, 20   # cuadrícula de 20 x 20 = 400 nodos
     g = Grafo()
-    N = [Nodo(f"N{i}") for i in range(100)]
+    N = [Nodo(f"N{i}") for i in range(FILAS * COLS)]
 
-    for fila in range(10):
-        for col in range(10):
-            i = fila * 10 + col
-            if col < 9:   # arista hacia la derecha
+    for fila in range(FILAS):
+        for col in range(COLS):
+            i = fila * COLS + col
+            if col < COLS - 1:   # arista hacia la derecha
                 peso = (i * 53 + 13 + fila * 7) % 9 + 1
                 g.agregar_arista(N[i], N[i + 1], peso)
-            if fila < 9:  # arista hacia abajo
+            if fila < FILAS - 1:  # arista hacia abajo
                 peso = (i * 53 + 26 + fila * 7) % 9 + 1
-                g.agregar_arista(N[i], N[i + 10], peso)
+                g.agregar_arista(N[i], N[i + COLS], peso)
 
     g.set_inicio(N[0])
-    g.set_fin(N[99])
+    g.set_fin(N[-1])
 
     camino, costo = g.resolver()
-    print(camino)
-    print(costo)
+    print(f"Nodos en el grafo: {len(g.nodos)}")
+    print(f"Camino ({len(camino)} nodos): {' -> '.join(n.nombre for n in camino)}")
+    print(f"Costo total: {costo}")
